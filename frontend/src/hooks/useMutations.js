@@ -137,6 +137,53 @@ export function useJoinGroup() {
   })
 }
 
+export function usePaymentExpense() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      group_id,
+      participant_handles,
+      amount_cents,
+      currency = 'EUR',
+      description,
+      category = 'other',
+      split_type = 'equal',
+      custom_split = [],
+      paid_by,
+    }) => {
+      let targetGroupId = group_id
+
+      if (!targetGroupId) {
+        const created = (await api.post('/groups', {
+          name: description || 'Split Payment',
+          emoji: '💸',
+          currency,
+          member_handles: participant_handles,
+        })).data
+        targetGroupId = extractId(created)
+      }
+
+      if (!targetGroupId) throw new Error('Could not resolve group for expense')
+
+      const expense = (await api.post(`/groups/${targetGroupId}/expenses`, {
+        description,
+        category,
+        amount_cents,
+        currency,
+        paid_by,
+        split_type,
+        custom_split: split_type === 'equal' ? [] : custom_split,
+      })).data
+
+      return { expense, group_id: targetGroupId }
+    },
+    onSuccess: ({ group_id }) => {
+      if (group_id) invalidateGroup(qc, group_id)
+      invalidateGlobal(qc)
+    },
+  })
+}
+
 export function useDeleteGroup(groupId) {
   const qc = useQueryClient()
   return useMutation({

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -151,8 +151,9 @@ export function GroupDetailPage() {
       </div>
 
       {/* Quick actions row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-2">
         <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
+        <GroupAction icon={CreditCard} label="Payment" href={`/payment?mode=split&groupId=${id}`} />
         <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
         <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
         <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
@@ -411,14 +412,6 @@ export function GroupDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <AddRecurringSheet
-        open={addRecurringOpen}
-        onOpenChange={setAddRecurringOpen}
-        group={group}
-        me={me}
-        onCreate={createRecurring}
-      />
-
       <AddRecurringSheet
         open={addRecurringOpen}
         onOpenChange={setAddRecurringOpen}

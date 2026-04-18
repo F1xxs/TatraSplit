@@ -2,6 +2,9 @@
 
 All previously planned tasks (01–10) are complete or intentionally skipped.
 
+## Done (recent)
+- task-23: Payments overhaul (split, group, recurring) — `task-23-payments-overhaul.md`
+
 ## Pending
 - task-12: Split buttons on payment rows — `task-12-payment-split-buttons.md`
 - task-15: PWA — installable on mobile — `task-15-pwa.md`
