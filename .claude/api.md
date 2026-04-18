@@ -1,5 +1,7 @@
 # TatraSplit API contract (shared backend + frontend)
 
+> **Implementation status:** This document is the *intended* API contract. As of now, the real backend only exposes `GET /api/v1/health`. All other endpoints listed below are **not yet implemented** in the backend. The frontend mock layer (`lib/mock.js`) implements this contract client-side so the app is fully usable without a backend.
+
 Base prefix: `/api/v1`  
 Default local base URL: `http://localhost:8000/api/v1`
 

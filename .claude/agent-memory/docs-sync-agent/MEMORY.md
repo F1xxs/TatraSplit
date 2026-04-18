@@ -1,0 +1,2 @@
+- [Backend implementation status](project_backend_status.md) — only health route exists; all API contract endpoints served by frontend mock layer
+- [Files that must be updated together](project_always_update_together.md) — coordinated update rules for routes, components, lib files across CLAUDE.md and frontend_structure.md

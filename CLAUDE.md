@@ -23,7 +23,6 @@ Before starting any task, read the relevant files in `.claude/`:
 # Backend
 cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && cp .env.example .env
-python -m app.services.seed --reset
 uvicorn app.main:app --reload   # http://localhost:8000
 
 # Frontend
@@ -48,13 +47,10 @@ React 19 + Vite + Tailwind + shadcn + TanStack Query
 | `core/config.py` | Pydantic settings from `.env` |
 | `core/db.py` | Motor client, indexes, `get_db` dep |
 | `core/security.py` | `get_current_user()` by handle |
-| `api/routes/` | One file per resource |
-| `models/` | Pydantic v2 request/response models |
-| `services/balances.py` | Aggregation pipelines for net balances |
-| `services/simplify.py` | Greedy debt simplification (two max-heaps) |
-| `services/seed.py` | Demo data; `--reset` drops collections |
+| `api/routes/health.py` | `/api/v1/health` — only implemented route |
+| `models/` | Pydantic v2 request/response models (stubs) |
 
-Routes (all `/api/v1`): `users`, `groups`, `expenses`, `settlements`, `balances`, `activity`. Every mutation writes an activity row.
+Routes (all `/api/v1`): only `health` is registered in `main.py`. Full route implementation (`users`, `groups`, `expenses`, `settlements`, `balances`, `activity`) is pending — frontend uses the mock layer (`lib/mock.js`) in the meantime.
 
 ## Frontend (`frontend/src/`)
 
@@ -70,9 +66,9 @@ Routes (all `/api/v1`): `users`, `groups`, `expenses`, `settlements`, `balances`
 | `hooks/useMe.js` | `useMe`, `useMeBalances` |
 | `hooks/useGroups.js` | `useGroups`, `useGroup`, `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`, `useActivity`, `useUsers` |
 | `hooks/useMutations.js` | `useCreateGroup`, `useAddExpense`, `useSettle`, `useJoinGroup` |
-| `components/ui/` | Design system primitives (Button, Card, Dialog, Sheet, Tabs…) |
-| `components/layout/` | `AppShell`, `BottomNav` |
-| `components/shared/` | `GroupCard`, `ExpenseRow`, `ActivityItem`, `SplitEditor`, `MoneyInput`, `CategoryDonut`, `QRInviteDialog`, `DataState` |
+| `components/ui/` | Design system primitives (Button, Card, Dialog, Sheet, Tabs, Avatar, Badge, Input, Label, Separator, Skeleton, Toaster…) |
+| `components/layout/` | `AppShell`, `BottomNav`, `TatraMark` |
+| `components/shared/` | `GroupCard`, `ExpenseRow`, `ActivityItem`, `SplitEditor`, `MoneyInput`, `CategoryDonut`, `CategoryIcon`, `BalancePill`, `SplitDonut`, `QRInviteDialog`, `DataState` |
 | `pages/` | Dashboard, GroupsList, GroupDetail, AddExpense, SettleUp, Activity, NewGroup, JoinGroup |
 
 ## Key conventions

@@ -31,7 +31,7 @@ Build/lint scripts from `package.json`:
 - `components/`
   - `layout/` — shell/navigation (`AppShell`, `BottomNav`)
   - `shared/` — feature-level reusable UI blocks (`GroupCard`, `ExpenseRow`, `SplitEditor`, etc.)
-  - `ui/` — low-level design-system primitives (`Button`, `Card`, `Dialog`, `Sheet`, `Tabs`, etc.)
+  - `ui/` — low-level design-system primitives (`Button`, `Card`, `Dialog`, `Sheet`, `Tabs`, `Avatar`, `Badge`, `Input`, `Label`, `Separator`, `Skeleton`, `Toaster`, etc.)
 - `hooks/` — all query/mutation hooks (`useGroups`, `useMe`, `useMutations`)
 - `lib/` — infrastructure and helpers (`api`, query keys, formatting, mock backend)
 - `pages/` — route screens (`DashboardPage`, `GroupDetailPage`, `AddExpensePage`, etc.)
@@ -108,6 +108,10 @@ Axios response interceptor normalizes backend errors to `Error(message)` from:
 - `response.data.message`
 - fallback axios message
 
+### `lib/utils.js`
+
+Exports `cn(...inputs)` — combines `clsx` and `tailwind-merge` for conditional, conflict-free Tailwind class composition. Used by every UI primitive and shared component.
+
 ### `lib/mock.js` (important for local understanding)
 
 This is a deterministic in-memory fake backend:
@@ -157,8 +161,9 @@ This is the main consistency mechanism in the app.
 
 ### `components/ui/`
 
-Primitive components (Button, Card, Input, Tabs, Dialog, Sheet, etc.) are custom wrappers, not Radix imports.  
-They share design tokens via CSS variables and `cn()` utility (`clsx + tailwind-merge`).
+Primitive components are custom wrappers (not Radix imports). They share design tokens via CSS variables and `cn()` from `lib/utils.js`.
+
+Current primitives: `button`, `card`, `dialog`, `sheet`, `tabs`, `avatar`, `badge`, `input`, `label`, `separator`, `skeleton`, `toaster`.
 
 ### `components/shared/`
 
@@ -166,8 +171,11 @@ Feature UI pieces composed from primitives:
 
 - `GroupCard` — list card with group net status
 - `ExpenseRow` — expense item with user impact
-- `ActivityItem` / `BankTransactionRow` — timeline rows
+- `ActivityItem` — timeline rows
 - `CategoryDonut` — Recharts pie + legend
+- `CategoryIcon` — emoji icon with tinted background for a given expense category
+- `BalancePill` — colored badge (green/red/neutral) showing a signed money amount in cents
+- `SplitDonut` — Recharts donut + per-participant breakdown; uses `share_cents` from split array
 - `SplitEditor` — equal/custom split editor with validation remainder
 - `QRInviteDialog` — invite QR + copy/share logic
 - `MoneyInput` — cents-based numeric input formatting
@@ -186,6 +194,7 @@ Use `emptyContent` prop for custom empty states with links/actions. Used in Dash
 
 - `AppShell` manages page frame + navigation
 - `BottomNav` is mobile bottom action bar
+- `TatraMark` — SVG logo mark (Tatra banka diagonal bars); accepts `className` for sizing/coloring
 
 ## 8) Pages and what each screen owns
 
