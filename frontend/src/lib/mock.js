@@ -9,7 +9,7 @@ const me = {
   id: 'u_misha',
   display_name: 'Misha',
   handle: '@misha',
-  color: 'hsl(263 82% 72%)',
+  color: 'hsl(210 90% 62%)',
 }
 
 const users = [

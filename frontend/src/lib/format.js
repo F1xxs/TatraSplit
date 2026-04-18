@@ -38,7 +38,7 @@ export function initials(name) {
 
 export function colorForName(name) {
   const palette = [
-    'hsl(263 82% 72%)',
+    'hsl(210 90% 62%)',
     'hsl(199 89% 65%)',
     'hsl(142 72% 55%)',
     'hsl(38 92% 60%)',
