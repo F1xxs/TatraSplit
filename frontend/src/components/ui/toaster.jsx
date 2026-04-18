@@ -28,7 +28,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={{ toast, dismiss }}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2">
+      <div className="pointer-events-none fixed inset-x-3 bottom-4 z-[60] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:w-full sm:max-w-sm">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
         ))}
@@ -77,7 +77,7 @@ function ToastItem({ toast, onDismiss }) {
   return (
     <div
       className={cn(
-        'pointer-events-auto rounded-xl border p-4 pr-8 shadow-xl backdrop-blur relative',
+        'pointer-events-auto relative max-w-full overflow-hidden rounded-xl border p-3 pr-8 shadow-xl backdrop-blur sm:p-4 sm:pr-8',
         styleMap[toast.variant] || styleMap.default,
       )}
       style={{
@@ -89,9 +89,9 @@ function ToastItem({ toast, onDismiss }) {
       <div className="flex gap-3">
         <Icon className={cn('h-5 w-5 mt-0.5 shrink-0', iconColorMap[toast.variant])} />
         <div className="flex-1 min-w-0">
-          {toast.title && <div className="text-sm font-semibold">{toast.title}</div>}
+          {toast.title && <div className="text-sm font-semibold break-words">{toast.title}</div>}
           {toast.description && (
-            <div className="text-sm text-[var(--color-muted-foreground)]">
+            <div className="text-xs break-words text-[var(--color-muted-foreground)] sm:text-sm">
               {toast.description}
             </div>
           )}

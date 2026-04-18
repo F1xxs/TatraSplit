@@ -12,7 +12,7 @@ import { useGroups, useActivity } from '@/hooks/useGroups'
 import { formatMoney } from '@/lib/format'
 import { useToast } from '@/components/ui/toaster'
 
-const STUB_IBAN = 'SK18 1100 0000 0029 3294 5724'
+const STUB_IBAN = 'SK18 1100 1111 1111 3294 5724'
 
 export function DashboardPage() {
   const { data: me, isLoading: meLoading } = useMe()
@@ -122,7 +122,7 @@ export function DashboardPage() {
                     {me?.display_name}
                   </div>
                   <div className="font-mono text-sm tracking-widest">
-                    4405 77** **** 0374
+                    4444 77** **** 9999
                   </div>
                 </div>
                 <span className="text-lg font-bold italic text-white/80">VISA</span>
