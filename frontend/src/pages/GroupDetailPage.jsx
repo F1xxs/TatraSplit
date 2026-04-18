@@ -267,12 +267,12 @@ function GroupAction({ icon, label, onClick, href, primary }) {
   const inner = (
     <>
       <div className={cn(
-        'h-8 w-8 rounded-xl flex items-center justify-center transition-colors',
+        'h-11 w-11 rounded-xl flex items-center justify-center transition-colors',
         primary
           ? 'bg-[var(--color-primary)] text-white'
           : 'bg-[var(--color-card-elevated)] border border-[var(--color-border)] text-[var(--color-primary)]',
       )}>
-        <GIcon className="h-3.5 w-3.5" />
+        <GIcon className="h-5 w-5" />
       </div>
       <span className="text-[11px] text-[var(--color-muted-foreground)] text-center">{label}</span>
     </>
