@@ -45,7 +45,7 @@ export function QRInviteDialog({ open, onOpenChange, group, invite }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="mx-auto mt-2 rounded-2xl bg-white p-4">
+        <div className="mx-auto mt-2 flex w-full max-w-[15rem] items-center justify-center rounded-2xl bg-white p-4">
           {url ? (
             <QRCodeSVG
               value={url}
@@ -54,19 +54,25 @@ export function QRInviteDialog({ open, onOpenChange, group, invite }) {
               fgColor="#0a0a0b"
               level="M"
               includeMargin={false}
+              style={{ display: 'block', width: '100%', height: 'auto', maxWidth: '220px' }}
             />
           ) : null}
         </div>
 
-        <div className="mt-4 flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-2">
+        <div className="relative mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-2">
           <input
             readOnly
             value={url}
-            className="flex-1 bg-transparent px-2 text-sm outline-none"
+            className="h-8 w-full min-w-0 overflow-hidden whitespace-nowrap text-ellipsis bg-transparent pl-2 pr-0 text-sm outline-none"
           />
-          <Button size="sm" variant="secondary" onClick={copy}>
+          <Button
+            size="icon-sm"
+            variant="secondary"
+            onClick={copy}
+            className="absolute right-2 top-1/2 z-10 -translate-y-1/2"
+            aria-label="Copy invite link"
+          >
             {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? 'Copied' : 'Copy'}
           </Button>
         </div>
 
