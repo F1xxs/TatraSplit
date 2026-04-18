@@ -120,6 +120,7 @@ This is a deterministic in-memory fake backend:
 - stores users/groups/expenses/settlements/activity in JS arrays
 - calculates balances + simplified transfers
 - supports join links and activity feed
+- supports `DELETE /groups/:id` with creator-only + unsettled-balance guard + cascading cleanup
 - simulates latency (`~220-400ms`)
 
 So the frontend is currently usable even if backend is unavailable.
@@ -143,6 +144,7 @@ All data fetching goes through hooks:
 
 Mutations:
 - create group
+- delete group
 - add expense
 - settle payment
 - join group
@@ -206,7 +208,7 @@ Account switch flow:
 
 - `DashboardPage`: account card, quick actions, short groups list, recent activity
 - `GroupsListPage`: all groups
-- `GroupDetailPage`: tabs for expenses/balances/activity + invite + add-expense sheet
+- `GroupDetailPage`: tabs for expenses/balances/activity + invite + add-expense sheet + creator-only delete action with confirmation/unsettled warning; successful delete redirects to `/groups`
 - `AddExpensePage`: right-side sheet + amount/category/payer/split editor
 - `SettleUpPage`: simplified transfer list + "mark paid"
 - `NewGroupPage`: group creation form (name/emoji/currency/members)

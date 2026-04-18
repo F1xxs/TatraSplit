@@ -1,12 +1,20 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarStack } from '@/components/ui/avatar'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toaster'
 import { ExpenseRow } from '@/components/shared/ExpenseRow'
 import { BalancePill } from '@/components/shared/BalancePill'
 import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
@@ -15,6 +23,7 @@ import { DataState } from '@/components/shared/DataState'
 import { QRInviteDialog } from '@/components/shared/QRInviteDialog'
 import { AddExpenseSheet } from './AddExpensePage'
 import { useMe } from '@/hooks/useMe'
+import { useDeleteGroup } from '@/hooks/useMutations'
 import {
   useGroup,
   useGroupExpenses,
@@ -27,16 +36,21 @@ import { cn } from '@/lib/utils'
 
 export function GroupDetailPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { data: group, isLoading } = useGroup(id)
   const { data: expenses = [], isLoading: expLoading, error: expError, refetch: refetchExp } = useGroupExpenses(id)
   const { data: balances } = useGroupBalances(id)
   const { data: activity = [], isLoading: actLoading, error: actError, refetch: refetchAct } = useGroupActivity(id)
   const { data: me } = useMe()
+  const deleteGroup = useDeleteGroup(id)
+  const { toast } = useToast()
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invite, setInvite] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
   const [membersOpen, setMembersOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const openInvite = async () => {
     try {
@@ -51,8 +65,35 @@ export function GroupDetailPage() {
   const members = group?.members || []
   const myNet =
     balances?.members?.find((m) => m.user_id === me?.id)?.net_cents ?? 0
+  const isCreator = group?.created_by === me?.id
+  const unsettledCents = (balances?.simplified_transfers || [])
+    .reduce((sum, t) => sum + (t.amount_cents || 0), 0)
+  const hasUnsettledBalances = unsettledCents > 0
 
   const categoryData = aggregateByCategory(expenses)
+
+  const openDeleteDialog = () => {
+    setDeleteError('')
+    setDeleteOpen(true)
+  }
+
+  const handleDeleteGroup = async () => {
+    setDeleteError('')
+    try {
+      await deleteGroup.mutateAsync()
+      toast({ variant: 'success', title: 'Group deleted' })
+      setDeleteOpen(false)
+      navigate('/groups')
+    } catch (err) {
+      const message = err?.message || 'Could not delete group.'
+      setDeleteError(message)
+      toast({
+        variant: 'error',
+        title: 'Could not delete group',
+        description: message,
+      })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -100,6 +141,22 @@ export function GroupDetailPage() {
         <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
         <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
       </div>
+
+      {isCreator && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-semibold">Delete this group</div>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                This permanently removes all expenses, settlements, and activity for this group.
+              </p>
+            </div>
+            <Button variant="destructive" size="sm" onClick={openDeleteDialog}>
+              Delete group
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="expenses">
@@ -233,6 +290,54 @@ export function GroupDetailPage() {
         groupId={id}
         group={group}
       />
+
+      <Dialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          setDeleteOpen(open)
+          if (!open) setDeleteError('')
+        }}
+      >
+        <DialogContent onClose={() => setDeleteOpen(false)}>
+          <DialogHeader>
+            <DialogTitle>Delete group “{group?.name || 'this group'}”?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. All group expenses, settlements, and activity will be permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+
+          {hasUnsettledBalances && (
+            <div className="rounded-xl border border-[var(--color-destructive)]/50 bg-[var(--color-destructive)]/10 p-3">
+              <div className="flex items-start gap-2 text-sm text-[var(--color-destructive)]">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>
+                  There are unsettled balances totaling{' '}
+                  <strong>{formatMoney(unsettledCents, group?.currency || 'EUR')}</strong>. Settle up first before deleting.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {deleteError && (
+            <div className="rounded-xl border border-[var(--color-destructive)]/50 bg-[var(--color-destructive)]/10 p-3 text-sm text-[var(--color-destructive)]">
+              {deleteError}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteGroup}
+              disabled={deleteGroup.isPending}
+            >
+              {deleteGroup.isPending ? 'Deleting…' : 'Delete group'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">

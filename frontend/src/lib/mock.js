@@ -27,6 +27,12 @@ const me = (() => {
 const uid = (prefix) =>
   `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`
 
+function httpError(status, detail) {
+  const err = new Error(detail)
+  err.response = { status, data: { detail } }
+  return err
+}
+
 const groups = [
   {
     id: 'g_roommates',
@@ -257,6 +263,39 @@ export async function handleMock(method, url, data) {
 
   // group detail
   let m = u.match(/^groups\/([^/]+)$/)
+  if (method === 'DELETE' && m) {
+    const gid = m[1]
+    const idx = groups.findIndex((x) => x.id === gid)
+    if (idx < 0) throw httpError(404, 'Group not found')
+
+    const g = groups[idx]
+    if (g.created_by !== me.id) {
+      throw httpError(403, 'Only the group creator can delete this group.')
+    }
+
+    const hasUnsettled = groupBalances(gid).members.some((m) => Math.abs(m.net_cents || 0) >= 1)
+    if (hasUnsettled) {
+      throw httpError(400, 'Group has unsettled balances. Settle up before deleting.')
+    }
+
+    logActivity('group.deleted', me.id, null, {
+      actor_name: me.display_name,
+      group_name: g.name,
+    })
+
+    groups.splice(idx, 1)
+    for (let i = expenses.length - 1; i >= 0; i--) {
+      if (expenses[i].group_id === gid) expenses.splice(i, 1)
+    }
+    for (let i = settlements.length - 1; i >= 0; i--) {
+      if (settlements[i].group_id === gid) settlements.splice(i, 1)
+    }
+    for (let i = activity.length - 1; i >= 0; i--) {
+      if (activity[i].group_id === gid) activity.splice(i, 1)
+    }
+
+    return { id: gid, deleted: true }
+  }
   if (method === 'GET' && m) {
     const g = groups.find((x) => x.id === m[1])
     return g ? populate(g) : null

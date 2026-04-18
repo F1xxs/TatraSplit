@@ -71,11 +71,11 @@ Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, 
 | `lib/format.js` | `formatMoney(cents, currency)`, date helpers |
 | `hooks/useMe.js` | `useMe`, `useMeBalances` |
 | `hooks/useGroups.js` | `useGroups`, `useGroup`, `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`, `useActivity`, `useUsers` |
-| `hooks/useMutations.js` | `useCreateGroup`, `useAddExpense`, `useSettle`, `useJoinGroup` |
+| `hooks/useMutations.js` | `useCreateGroup`, `useDeleteGroup`, `useAddExpense`, `useSettle`, `useJoinGroup` |
 | `components/ui/` | Design system primitives (Button, Card, Dialog, Sheet, Tabs, Avatar, Badge, Input, Label, Separator, Skeleton, Toaster…) |
 | `components/layout/` | `AppShell`, `BottomNav`, `TatraMark` |
 | `components/shared/` | `GroupCard`, `ExpenseRow`, `ActivityItem`, `SplitEditor`, `MoneyInput`, `CategoryDonut`, `CategoryIcon`, `BalancePill`, `SplitDonut`, `QRInviteDialog`, `DataState` |
-| `pages/` | Dashboard, GroupsList, GroupDetail, AddExpense, SettleUp, Activity, NewGroup, JoinGroup |
+| `pages/` | Dashboard, GroupsList, GroupDetail (includes creator-only delete-group flow), AddExpense, SettleUp, Activity, NewGroup, JoinGroup |
 
 ## Key conventions
 

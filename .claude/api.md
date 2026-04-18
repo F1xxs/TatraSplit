@@ -1,6 +1,6 @@
 # TatraSplit API contract (shared backend + frontend)
 
-> **Implementation status:** This document is the *intended* API contract. As of now, the real backend only exposes `GET /api/v1/health`. All other endpoints listed below are **not yet implemented** in the backend. The frontend mock layer (`lib/mock.js`) implements this contract client-side so the app is fully usable without a backend.
+> **Implementation status:** This document tracks the shared API contract used by backend and frontend. Backend routes under `/api/v1` are implemented for core resources, and the frontend mock layer (`lib/mock.js`) mirrors this contract for local mock mode.
 
 Base prefix: `/api/v1`  
 Default local base URL: `http://localhost:8000/api/v1`
@@ -29,10 +29,19 @@ Default local base URL: `http://localhost:8000/api/v1`
 | POST | `/groups` | Create group (`name`, `emoji`, `currency`, `member_handles[]`) |
 | GET | `/groups` | List groups for current user |
 | GET | `/groups/{id}` | Group detail with members |
+| DELETE | `/groups/{group_id}` | Delete group (creator only); returns 400 if unsettled balances exist |
 | POST | `/groups/{id}/members` | Add member(s) |
 | DELETE | `/groups/{id}/members/{user_id}` | Remove member |
 | GET | `/groups/{id}/invite` | Returns `invite_token` |
 | POST | `/groups/join/{invite_token}` | Join by invite token |
+
+### Group delete rules (`DELETE /groups/{group_id}`)
+
+- Only the group creator can delete the group (`403` otherwise).
+- If any member has non-zero `net_cents`, delete is blocked with `400` (`Group has unsettled balances`).
+- No force override is supported.
+- On success, the backend deletes the group and cascades cleanup of related `expenses`, `settlements`, and group-scoped `activity`.
+- Success response: `{ "ok": true }`.
 
 ## Expenses
 
@@ -98,6 +107,7 @@ This is how frontend hooks currently map to endpoints:
 - `useMeBalances` -> `GET /me/balances`
 - `useActivity` -> `GET /activity`
 - `useCreateGroup` -> `POST /groups`
+- `useDeleteGroup(groupId)` -> `DELETE /groups/{group_id}`
 - `useAddExpense` -> `POST /groups/{id}/expenses`
 - `useSettle` -> `POST /groups/{id}/settlements`
 - `useJoinGroup` -> `POST /groups/join/{invite_token}`

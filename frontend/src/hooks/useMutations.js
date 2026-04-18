@@ -45,3 +45,11 @@ export function useJoinGroup() {
     onSuccess: () => invalidateGlobal(qc),
   })
 }
+
+export function useDeleteGroup(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async () => (await api.delete(`/groups/${groupId}`)).data,
+    onSuccess: () => invalidateGlobal(qc),
+  })
+}
