@@ -15,11 +15,12 @@ async def my_route(db=Depends(get_db)):
 
 | Collection    | Key fields |
 |---|---|
-| `users`       | `_id`, `handle` (unique), `name`, `avatar_url` |
+| `users`       | `_id`, `handle` (unique), `display_name`, `avatar_url`, `color`, `balance_cents`, `currency` |
 | `groups`      | `_id`, `name`, `emoji`, `currency`, `member_ids[]`, `created_by`, `invite_token`, `created_at` |
 | `expenses`    | `_id`, `group_id`, `paid_by`, `amount_cents`, `category`, `split[]` (`user_id`, `share_cents`), `created_at` |
-| `settlements` | `_id`, `group_id`, `from_user`, `to_user`, `amount_cents`, `created_at` |
+| `settlements` | `_id`, `group_id`, `from_user`, `to_user`, `amount_cents`, `currency`, `method`, `note`, `created_at` |
 | `activity`    | `_id`, `group_id`, `actor_id`, `kind`, `payload`, `created_at` |
+| `recurring`   | `_id`, `group_id`, `title`, `amount_cents`, `currency`, `category`, `paid_by`, `split_type`, `custom_split[]`, `frequency`, `next_due`, `active`, `created_by`, `created_at` |
 
 ## Indexes (created on startup)
 
@@ -33,6 +34,7 @@ expenses.create_index("split.user_id")
 settlements.create_index([("group_id", ASC), ("created_at", DESC)])
 activity.create_index([("created_at", DESC)])
 activity.create_index([("group_id", ASC), ("created_at", DESC)])
+recurring.create_index([("group_id", ASC), ("active", ASC), ("next_due", ASC)])
 ```
 
 Always query by indexed fields. `group_id` + `created_at` is the primary access pattern for expenses/settlements/activity.

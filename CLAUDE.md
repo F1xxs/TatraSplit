@@ -25,6 +25,7 @@ Before starting any task, read the relevant files in `.claude/`:
 # Backend
 cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && cp .env.example .env
+# In backend/.env, replace CORS_ALLOW_ORIGINS and (optionally) CORS_ALLOW_ORIGIN_REGEX for your localhost/LAN setup
 uvicorn app.main:app --reload   # http://localhost:8000
 
 # Frontend
@@ -49,14 +50,15 @@ React 19 + Vite + Tailwind + shadcn + TanStack Query
 | `core/config.py` | Pydantic settings from `.env` |
 | `core/db.py` | Motor client, indexes, `get_db` dep |
 | `core/security.py` | `get_current_user()` by handle |
-| `api/routes/` | One file per resource (`health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity`) |
+| `api/routes/` | One file per resource (`health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity`, `recurring`, `admin`) |
 | `models/` | Pydantic v2 request/response schemas |
 | `services/balances.py` | Net balance aggregation + debt simplification calls |
 | `services/simplify.py` | Greedy debt simplification (two max-heaps) |
 | `services/activity.py` | `append_activity()` — writes activity rows |
-| `services/seed.py` | Demo data; `--reset` drops collections |
+| `services/recurring.py` | `process_due()` — creates expenses from due recurring entries |
+| `services/seed.py` | Demo data; `--reset` drops collections, seeds 4 users with 500 EUR wallet |
 
-Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity` — all registered in `main.py`. Every mutation calls `append_activity()`.
+Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity`, `recurring`, `admin` — all registered in `main.py`. Every mutation calls `append_activity()`.
 
 ## Frontend (`frontend/src/`)
 
@@ -70,12 +72,13 @@ Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, 
 | `lib/invalidation.js` | `invalidateGlobal(qc)`, `invalidateGroup(qc, id)` — used by all mutations |
 | `lib/format.js` | `formatMoney(cents, currency)`, date helpers |
 | `hooks/useMe.js` | `useMe`, `useMeBalances` |
-| `hooks/useGroups.js` | `useGroups`, `useGroup`, `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`, `useActivity`, `useUsers` |
-| `hooks/useMutations.js` | `useCreateGroup`, `useDeleteGroup`, `useAddExpense`, `useSettle`, `useJoinGroup` |
+| `hooks/useGroups.js` | `useGroups`, `useGroup`, `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`, `useGroupSettlements`, `useActivity`, `useUsers` |
+| `hooks/useRecurring.js` | `useGroupRecurring`, `useCreateRecurring`, `useDeleteRecurring`, `useProcessRecurring` |
+| `hooks/useMutations.js` | `useCreateGroup`, `useDeleteGroup`, `useAddExpense`, `useSettle`, `usePayment`, `useJoinGroup` |
 | `components/ui/` | Design system primitives (Button, Card, Dialog, Sheet, Tabs, Avatar, Badge, Input, Label, Separator, Skeleton, Toaster…) |
 | `components/layout/` | `AppShell`, `BottomNav`, `TatraMark` |
 | `components/shared/` | `GroupCard`, `ExpenseRow`, `ActivityItem`, `SplitEditor`, `MoneyInput`, `CategoryDonut`, `CategoryIcon`, `BalancePill`, `SplitDonut`, `QRInviteDialog`, `DataState` |
-| `pages/` | Dashboard, GroupsList, GroupDetail (includes creator-only delete-group flow), AddExpense, SettleUp, Activity, NewGroup, JoinGroup |
+| `pages/` | Dashboard, GroupsList, GroupDetail (includes creator-only delete-group flow), AddExpense, SettleUp, Activity, NewGroup, JoinGroup, Payment, Admin |
 
 ## Key conventions
 
@@ -83,6 +86,7 @@ Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, 
 - **IDs**: always `entity.id` (string). `normalizeEntity` applied in all query hooks — never write `id || _id`.
 - **Invalidation**: mutations call `invalidateGroup(qc, id)` and/or `invalidateGlobal(qc)` — don't repeat `invalidateQueries` inline.
 - **Demo identity**: selected account is persisted in `tatrasplit_user_handle`; API requests read that key and set `X-User-Handle` (fallback `@misha`).
+- **CORS**: configured via env in `backend/app/core/config.py` (`CORS_ALLOW_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX`, `CORS_ALLOW_*`). Edit `backend/.env` using `backend/.env.example` templates for replaceable localhost/LAN origins.
 - **New backend route**: add file in `api/routes/`, register in `main.py`.
 - **New page**: add `React.lazy` import in `App.jsx`, wrap element with `<Suspense>`.
 - **Loading/empty/error states**: use `<DataState>` component in list pages.

@@ -24,12 +24,25 @@ backend/app/
     balances.py        # Aggregation logic for net balances
     simplify.py        # Greedy debt simplification (two max-heaps)
     activity.py        # append_activity() — writes activity rows
-    seed.py            # Demo data; --reset drops collections
+    recurring.py       # process_due() — creates expenses from due recurring entries
+    seed.py            # Demo data; --reset drops collections, seeds 4 users with 500 EUR wallet each
 ```
 
 ## Auth
 
 No real auth. `get_current_user` reads `X-User-Handle` header; falls back to `settings.current_user_handle` (`@misha`). Returns the user document or 401.
+
+## Runtime config (CORS)
+
+- CORS middleware in `app/main.py` is fully driven by `Settings` in `app/core/config.py`.
+- Configure these env vars in `backend/.env` (template in `backend/.env.example`):
+  - `CORS_ALLOW_ORIGINS` (comma-separated allowlist, e.g. localhost/127.0.0.1/LAN IP)
+  - `CORS_ALLOW_ORIGIN_REGEX` (optional pattern allowlist)
+  - `CORS_ALLOW_CREDENTIALS`, `CORS_ALLOW_METHODS`, `CORS_ALLOW_HEADERS`
+
+## Wallet
+
+Users have a `balance_cents` field (seeded at 50000 = 500 EUR). Settlements deduct from payer's wallet and credit recipient's wallet atomically. This is the demo banking model — settlements require sufficient wallet balance.
 
 ## Serialization
 
@@ -46,7 +59,7 @@ Integer cents everywhere. Fields named `amount_cents`, `share_cents`, `net_cents
 
 ## Activity
 
-Every mutation (create group, add expense, settle, join) must call `append_activity(db, group_id, actor_id, kind, payload)`. Activity kinds: `group.created`, `group.member.joined`, `group.member.left`, `expense.added`, `settlement.created`.
+Every mutation (create group, add expense, settle, join) must call `append_activity(db, group_id, actor_id, kind, payload)`. Activity kinds: `group.created`, `group.member.joined`, `group.member.left`, `expense.added`, `settlement.created`, `recurring.triggered`.
 
 ## Adding a new route
 

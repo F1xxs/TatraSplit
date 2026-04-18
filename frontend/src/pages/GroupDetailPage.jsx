@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, Trash2, Check, Pencil, Search, UserPlus } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, CreditCard, Check, Pencil, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -192,8 +192,9 @@ export function GroupDetailPage() {
       </div>
 
       {/* Quick actions row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-2">
         <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
+        <GroupAction icon={CreditCard} label="Payment" href={`/payment?mode=split&groupId=${id}`} />
         <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
         <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
         <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
@@ -503,6 +504,7 @@ export function GroupDetailPage() {
         initial={editingRecurring}
         onUpdate={(data) => updateRecurring.mutateAsync({ recurringId: editingRecurring.id, ...data })}
       />
+
 
       <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
