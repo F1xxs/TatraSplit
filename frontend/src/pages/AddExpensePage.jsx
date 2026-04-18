@@ -27,27 +27,28 @@ export function AddExpensePage() {
   )
 }
 
-export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp }) {
+export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp, initialDescription = '', initialAmount = 0, onAfterSubmit }) {
   const { data: groupFetched } = useGroup(groupId)
   const group = groupProp || groupFetched
   const { data: me } = useMe()
   const members = group?.members || []
   const { toast } = useToast()
 
-  const [amount, setAmount] = useState(0)
-  const [description, setDescription] = useState('')
+  const [amount, setAmount] = useState(initialAmount)
+  const [description, setDescription] = useState(initialDescription)
   const [category, setCategory] = useState('food')
   const [splitType, setSplitType] = useState('equal')
   const [split, setSplit] = useState([])
 
   useEffect(() => {
-    if (!open) {
-      setAmount(0)
-      setDescription('')
+    if (open) {
+      setAmount(initialAmount)
+      setDescription(initialDescription)
       setCategory('food')
       setSplitType('equal')
       setSplit([])
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
       })
       toast({ variant: 'success', title: 'Expense added' })
       onOpenChange?.(false)
+      await onAfterSubmit?.()
     } catch (err) {
       toast({ variant: 'error', title: 'Could not add expense', description: err.message })
     }

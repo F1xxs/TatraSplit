@@ -1,8 +1,20 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { Receipt, HandCoins, UserPlus, Users, Bell, Trash2 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useMe } from '@/hooks/useMe'
+import { useGroups, useUsers } from '@/hooks/useGroups'
+import { useCreateGroup } from '@/hooks/useMutations'
+import { api } from '@/lib/api'
+import { invalidateGlobal } from '@/lib/invalidation'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { useToast } from '@/components/ui/toaster'
+import { AddExpenseSheet } from '@/pages/AddExpensePage'
 
 const kindMeta = {
   'expense.created':    { icon: Receipt,   color: '#0070D2' },
@@ -14,7 +26,6 @@ const kindMeta = {
 }
 
 function getTitle(item, meId) {
-  const actor = item.payload?.actor_name || 'Someone'
   switch (item.kind) {
     case 'expense.created':   return item.payload?.description || 'Expense'
     case 'expense.deleted':   return item.payload?.description || 'Expense deleted'
@@ -30,7 +41,7 @@ function getTitle(item, meId) {
       return `${fromName} paid ${toName}`
     }
     case 'group.created':     return item.payload?.group_name || 'New group'
-    case 'member.joined':     return `${actor} joined`
+    case 'member.joined':     return `${item.payload?.actor_name || 'Someone'} joined`
     default: return item.kind
   }
 }
@@ -39,7 +50,7 @@ function getSubtitle(item, meId) {
   const group = item.payload?.group_name
   switch (item.kind) {
     case 'expense.created':
-      return `${item.payload?.actor_name || 'Someone'} paid${group ? ` · ${group}` : ''}`
+      return group || ''
     case 'settlement.created': {
       const isReceiver = item.payload?.to_user && meId && item.payload.to_user === meId
       const label = isReceiver ? 'Payment received' : 'Payment sent'
@@ -61,8 +72,6 @@ function getAmount(item, meId) {
   if (item.kind === 'settlement.created') {
     if (item.payload?.from_user && meId && item.payload.from_user === meId) {
       isCredit = false
-    } else if (item.payload?.to_user && meId && item.payload.to_user === meId) {
-      isCredit = true
     } else {
       isCredit = true
     }
@@ -116,6 +125,13 @@ export function BankTransactionRow({ item, border, dateLabel }) {
   const ts = item.created_at ? new Date(item.created_at) : new Date()
   const amount = getAmount(item, meId)
 
+  const isSettlement = item.kind === 'settlement.created'
+  const isShared = item.payload?.shared === true
+  const [sheetOpen, setSheetOpen] = useState(false)
+
+  const isSent = item.payload?.from_user === meId
+  const rowClickable = isSettlement && !isShared && isSent
+
   return (
     <div>
       {dateLabel && (
@@ -124,9 +140,11 @@ export function BankTransactionRow({ item, border, dateLabel }) {
         </div>
       )}
       <div
+        onClick={rowClickable ? () => setSheetOpen(true) : undefined}
         className={cn(
           'flex items-center gap-3 px-4 py-3.5',
           border && 'border-t border-[var(--color-border)]',
+          rowClickable && 'cursor-pointer hover:bg-[var(--color-secondary)] transition-colors',
         )}
       >
         <div
@@ -140,6 +158,11 @@ export function BankTransactionRow({ item, border, dateLabel }) {
           <div className="text-xs text-[var(--color-muted-foreground)] truncate mt-0.5">
             {getSubtitle(item, meId)}
           </div>
+          {isSettlement && isShared && (
+            <span className="inline-flex items-center rounded-full bg-[#1DB954]/15 px-2 py-0.5 text-[10px] font-semibold text-[#1DB954] mt-1">
+              Shared
+            </span>
+          )}
         </div>
         <div className="shrink-0 text-right">
           {amount && (
@@ -157,6 +180,210 @@ export function BankTransactionRow({ item, border, dateLabel }) {
           </div>
         </div>
       </div>
+
+      {isSettlement && (
+        <AddToGroupSheet
+          open={sheetOpen}
+          onOpenChange={setSheetOpen}
+          item={item}
+          meId={meId}
+        />
+      )}
     </div>
+  )
+}
+
+function AddToGroupSheet({ open, onOpenChange, item, meId }) {
+  const { data: groups = [] } = useGroups()
+  const { data: allUsers = [] } = useUsers()
+  const createGroup = useCreateGroup()
+  const { toast } = useToast()
+  const qc = useQueryClient()
+
+  const [mode, setMode] = useState('existing') // 'existing' | 'person'
+  const [groupId, setGroupId] = useState('')
+  const [search, setSearch] = useState('')
+  const [expenseOpen, setExpenseOpen] = useState(false)
+  const [targetGroupId, setTargetGroupId] = useState('')
+  const [creating, setCreating] = useState(false)
+
+  const isSender = item.payload?.from_user === meId
+  const otherName = isSender
+    ? (item.payload?.to_name || 'contact')
+    : (item.payload?.from_name || 'contact')
+  const initialDescription = isSender
+    ? `Payment to ${otherName}`
+    : `Payment from ${otherName}`
+  const initialAmount = item.payload?.amount_cents || 0
+
+  const filteredUsers = allUsers.filter((u) => {
+    if (u.id === meId) return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return (
+      u.display_name?.toLowerCase().includes(q) ||
+      u.handle?.toLowerCase().includes(q)
+    )
+  })
+
+  const openExpenseFor = (gid) => {
+    setTargetGroupId(gid)
+    setExpenseOpen(true)
+  }
+
+  const handleContinueExisting = () => {
+    if (!groupId) return
+    onOpenChange(false)
+    openExpenseFor(groupId)
+  }
+
+  const handleSelectPerson = async (user) => {
+    setCreating(true)
+    try {
+      const group = await createGroup.mutateAsync({
+        name: `${user.display_name || user.handle}`,
+        emoji: '👥',
+        currency: item.payload?.currency || 'EUR',
+        member_handles: [user.handle],
+      })
+      onOpenChange(false)
+      openExpenseFor(group.id)
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not create group', description: err.message })
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleAfterSubmit = async () => {
+    try {
+      if (item.payload?.settlement_id) {
+        await api.patch(`/settlements/${item.payload.settlement_id}/share`, { group_id: targetGroupId })
+      }
+      invalidateGlobal(qc)
+    } catch {
+      toast({ variant: 'error', title: 'Could not mark as shared' })
+    }
+  }
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange} side="bottom">
+        <SheetContent className="rounded-t-2xl pb-safe">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Add to group</SheetTitle>
+          </SheetHeader>
+
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="rounded-2xl bg-[var(--color-secondary)] p-4 text-center">
+              <div className="text-2xl font-bold tabular-nums">
+                {formatMoney(item.payload?.amount_cents, item.payload?.currency || 'EUR')}
+              </div>
+              <div className="text-xs text-[var(--color-muted-foreground)] mt-1">
+                {isSender ? `Paid to ${otherName}` : `Received from ${otherName}`}
+              </div>
+            </div>
+
+            {/* Mode toggle */}
+            <div className="flex rounded-xl bg-[var(--color-secondary)] p-1 gap-1">
+              {['existing', 'person'].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={cn(
+                    'flex-1 rounded-lg py-1.5 text-sm font-medium transition-colors',
+                    mode === m
+                      ? 'bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm'
+                      : 'text-[var(--color-muted-foreground)]',
+                  )}
+                >
+                  {m === 'existing' ? 'Existing group' : 'New with person'}
+                </button>
+              ))}
+            </div>
+
+            {mode === 'existing' ? (
+              <>
+                <div className="max-h-52 overflow-y-auto space-y-1">
+                  {groups.length === 0 && (
+                    <div className="py-6 text-center text-sm text-[var(--color-muted-foreground)]">No groups yet</div>
+                  )}
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setGroupId(g.id)}
+                      className={cn(
+                        'w-full flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors text-left',
+                        groupId === g.id
+                          ? 'bg-[var(--color-primary)]/15 ring-1 ring-[var(--color-primary)]'
+                          : 'hover:bg-[var(--color-secondary)]',
+                      )}
+                    >
+                      <span className="text-xl shrink-0">{g.emoji}</span>
+                      <span className="text-sm font-medium truncate">{g.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="ghost" className="flex-1" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button className="flex-1" disabled={!groupId} onClick={handleContinueExisting}>
+                    Continue
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <Input
+                    placeholder="Search people…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="max-h-52 overflow-y-auto space-y-1">
+                  {filteredUsers.length === 0 && (
+                    <div className="py-6 text-center text-sm text-[var(--color-muted-foreground)]">No people found</div>
+                  )}
+                  {filteredUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      disabled={creating}
+                      onClick={() => handleSelectPerson(u)}
+                      className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-[var(--color-secondary)] transition-colors text-left"
+                    >
+                      <div
+                        className="h-9 w-9 rounded-full flex items-center justify-center shrink-0 text-sm font-bold text-white"
+                        style={{ background: u.color || '#0070D2' }}
+                      >
+                        {(u.display_name || u.handle || '?')[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{u.display_name || u.handle}</div>
+                        <div className="text-xs text-[var(--color-muted-foreground)]">{u.handle}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <Button variant="ghost" className="w-full" onClick={() => onOpenChange(false)}>Cancel</Button>
+              </>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AddExpenseSheet
+        open={expenseOpen}
+        onOpenChange={setExpenseOpen}
+        groupId={targetGroupId}
+        initialDescription={initialDescription}
+        initialAmount={initialAmount}
+        onAfterSubmit={handleAfterSubmit}
+      />
+    </>
   )
 }
