@@ -13,33 +13,30 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
         name: 'TatraSplit',
         short_name: 'TatraSplit',
-        description: 'Shared payments and group expense splitting.',
-        theme_color: '#1d4ed8',
-        background_color: '#09090b',
+        description: 'Shared payments by Tatra banka',
+        theme_color: '#0f172a',
+        background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
-          icons: [
-            {
-              src: 'icons/icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-            },
-            {
-              src: 'icons/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-            },
-            {
-              src: 'icons/icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'maskable',
+        icons: [
+          {
+            src: 'icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+          {
+            src: 'icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
           },
         ],
       },
@@ -47,9 +44,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) =>
-              url.origin === 'http://localhost:8000' &&
-              url.pathname.startsWith('/api/v1/'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
