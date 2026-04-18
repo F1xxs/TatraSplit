@@ -5,7 +5,6 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 ## Pending
 - task-11: Remove card panel from Dashboard — `task-11-remove-card-panel.md`
 - task-12: Split buttons on payment rows — `task-12-payment-split-buttons.md`
-- task-13: Account switcher (demo) — `task-13-account-switcher.md`
 - task-14: DB management panel — `task-14-db-management.md`
 - task-15: PWA — installable on mobile — `task-15-pwa.md`
 - task-16: Contacts (view + add) — `task-16-contacts.md`
@@ -24,6 +23,7 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 - task-08: UX state patterns (`DataState.jsx`)
 - task-09: a11y pass (aria-labels, nav roles)
 - task-10: route-level lazy loading
+- task-13: Account switcher (demo)
 
 ## Skipped (not worth for hackathon scope)
 - task-03: TypeScript migration — too heavy, no demo value

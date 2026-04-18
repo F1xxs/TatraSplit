@@ -2,7 +2,7 @@
 
 ## Project
 
-**TatraSplit** — shared-payments demo for HackKosice (TatraBank challenge). Groups, expenses, debt calculation, settlement. Hardcoded current user (`@misha`), no login.
+**TatraSplit** — shared-payments demo for HackKosice (TatraBank challenge). Groups, expenses, debt calculation, settlement. Demo account switcher (no login): selected handle is stored in `localStorage` (`tatrasplit_user_handle`) and sent as `X-User-Handle` (fallback `@misha`).
 
 ## Agent instructions
 
@@ -82,6 +82,7 @@ Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, 
 - **Money**: integer cents everywhere — `amount_cents`, `share_cents`, `net_cents`. Display via `formatMoney`.
 - **IDs**: always `entity.id` (string). `normalizeEntity` applied in all query hooks — never write `id || _id`.
 - **Invalidation**: mutations call `invalidateGroup(qc, id)` and/or `invalidateGlobal(qc)` — don't repeat `invalidateQueries` inline.
+- **Demo identity**: selected account is persisted in `tatrasplit_user_handle`; API requests read that key and set `X-User-Handle` (fallback `@misha`).
 - **New backend route**: add file in `api/routes/`, register in `main.py`.
 - **New page**: add `React.lazy` import in `App.jsx`, wrap element with `<Suspense>`.
 - **Loading/empty/error states**: use `<DataState>` component in list pages.

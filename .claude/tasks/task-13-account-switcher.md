@@ -1,6 +1,6 @@
 # task-13: Account switcher (demo)
 
-## Status: pending
+## Status: done
 
 ## Goal
 Add a dropdown menu to the user avatar block in the sidebar so demo users can switch between the 4 seeded accounts without restarting the server.
@@ -12,12 +12,12 @@ Add a dropdown menu to the user avatar block in the sidebar so demo users can sw
 ## Implementation
 
 ### Frontend
-1. Wrap the user block (lines 75-90) in a `DropdownMenu` trigger
-2. Menu items: `@misha`, `@lukas`, `@nina`, `@tomas` (hardcoded — demo only)
-3. Show display name + handle per item; checkmark on current user
+1. Sidebar user block in `AppShell` is clickable and opens account switcher menu
+2. Menu items are hardcoded (demo): `@misha`, `@lukas`, `@nina`, `@tomas`
+3. Menu shows display name + handle; selected account is marked with a check icon
 4. On select:
    - Save handle to `localStorage` key `tatrasplit_user_handle`
-   - No page reload needed — invalidate all queries via `invalidateGlobal(qc)` from `lib/invalidation.js`
+   - No page reload needed — invalidate via `invalidateGlobal(qc)` from `lib/invalidation.js` (includes `qk.me`)
 
 ### API layer
 **File:** `frontend/src/lib/api.js`
@@ -39,9 +39,11 @@ Add a dropdown menu to the user avatar block in the sidebar so demo users can sw
 ## Files changed
 - `frontend/src/components/layout/AppShell.jsx`
 - `frontend/src/lib/api.js`
+- `frontend/src/lib/invalidation.js`
 
 ## Verification
 - Clicking user block opens dropdown with 4 users
 - Selecting different user updates avatar + name in sidebar
 - All data (groups, balances, activity) refreshes to reflect selected user's perspective
+- `useMe` / identity refreshes immediately after selection
 - Persists across page refresh (localStorage)

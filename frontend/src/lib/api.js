@@ -3,7 +3,7 @@ import axios from 'axios'
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1'
 
 function getUserHandle() {
-  return localStorage.getItem('userHandle') || '@misha'
+  return localStorage.getItem('tatrasplit_user_handle') || '@misha'
 }
 
 export const api = axios.create({

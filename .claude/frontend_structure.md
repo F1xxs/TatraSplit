@@ -90,7 +90,7 @@ Applied in all `queryFn` implementations. Mutation fns for `useCreateGroup` and 
 
 Centralized React Query invalidation helpers used by all mutations:
 
-- `invalidateGlobal(qc)` — invalidates `groups`, `meBalances`, `activity`
+- `invalidateGlobal(qc)` — invalidates `me`, `groups`, `meBalances`, `activity`
 - `invalidateGroup(qc, id)` — invalidates `group`, `groupExpenses`, `groupBalances`, `groupActivity` for a specific group
 
 **Rule:** All mutations must call these helpers in `onSuccess` instead of repeating `invalidateQueries` calls inline.
@@ -99,6 +99,7 @@ Centralized React Query invalidation helpers used by all mutations:
 
 - `API_BASE = VITE_API_BASE || "http://localhost:8000/api/v1"`
 - `VITE_USE_MOCK !== "false"` means **mock mode is ON by default**
+- Request interceptor reads `localStorage.getItem("tatrasplit_user_handle")` and sets `X-User-Handle` on every request (fallback `@misha`)
 - `api.get` / `api.post` call:
   - mock handler (`lib/mock.js`) when mock mode is on
   - axios instance when mock mode is off
@@ -192,9 +193,14 @@ Use `emptyContent` prop for custom empty states with links/actions. Used in Dash
 
 ### `components/layout/`
 
-- `AppShell` manages page frame + navigation
+- `AppShell` manages page frame + navigation, and includes demo account switcher in the desktop sidebar user block (`@misha`, `@lukas`, `@nina`, `@tomas`)
 - `BottomNav` is mobile bottom action bar
 - `TatraMark` — SVG logo mark (Tatra banka diagonal bars); accepts `className` for sizing/coloring
+
+Account switch flow:
+- Selecting an account in `AppShell` stores handle in `localStorage` key `tatrasplit_user_handle`
+- `invalidateGlobal(qc)` is triggered so `qk.me` and related global queries refresh immediately
+- `useMe()` then reflects the switched identity without reload
 
 ## 8) Pages and what each screen owns
 
