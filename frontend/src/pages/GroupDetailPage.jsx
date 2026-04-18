@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarStack } from '@/components/ui/avatar'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { ExpenseRow } from '@/components/shared/ExpenseRow'
 import { BalancePill } from '@/components/shared/BalancePill'
 import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
@@ -35,6 +36,7 @@ export function GroupDetailPage() {
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invite, setInvite] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [membersOpen, setMembersOpen] = useState(false)
 
   const openInvite = async () => {
     try {
@@ -96,7 +98,7 @@ export function GroupDetailPage() {
         <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
         <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
         <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
-        <GroupAction icon={Users} label="Members" href={`/groups/${id}`} />
+        <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
       </div>
 
       {/* Tabs */}
@@ -231,6 +233,35 @@ export function GroupDetailPage() {
         groupId={id}
         group={group}
       />
+
+      <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Members · {members.length}</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-1">
+            {members.map((m) => {
+              const uid = m.id
+              const isMe = uid === me?.id
+              const memberBalance = balances?.members?.find((b) => b.user_id === uid)
+              const net = memberBalance?.net_cents ?? null
+              return (
+                <div key={uid} className="flex items-center gap-3 py-3 border-b border-[var(--color-border)] last:border-0">
+                  <Avatar name={m.display_name} color={m.color} size="md" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">
+                      {m.display_name}
+                      {isMe && <span className="text-xs text-[var(--color-muted-foreground)] font-normal"> (you)</span>}
+                    </div>
+                    <div className="text-xs text-[var(--color-muted-foreground)]">{m.handle}</div>
+                  </div>
+                  {net !== null && <BalancePill cents={net} currency={group?.currency || 'EUR'} />}
+                </div>
+              )
+            })}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
@@ -241,7 +272,7 @@ function GroupAction({ icon, label, onClick, href, primary }) {
   const inner = (
     <>
       <div className={cn(
-        'h-12 w-12 rounded-2xl flex items-center justify-center transition-colors',
+        'h-11 w-11 rounded-xl flex items-center justify-center transition-colors',
         primary
           ? 'bg-[var(--color-primary)] text-white'
           : 'bg-[var(--color-card-elevated)] border border-[var(--color-border)] text-[var(--color-primary)]',
