@@ -9,4 +9,5 @@ export const qk = {
   groupSettlements: (id) => ['group', id, 'settlements'],
   meBalances: ['balances', 'me'],
   activity: ['activity'],
+  groupRecurring: (id) => ['group', id, 'recurring'],
 }
