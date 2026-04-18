@@ -1,16 +1,20 @@
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
+import { Avatar } from '@/components/ui/avatar'
 import { GroupCard } from '@/components/shared/GroupCard'
 import { DataState } from '@/components/shared/DataState'
 import { useGroups } from '@/hooks/useGroups'
+import { useContacts } from '@/hooks/useContacts'
 
 export function GroupsListPage() {
   const { data: groups = [], isLoading, error, refetch } = useGroups()
+  const { data: contacts = [] } = useContacts()
+  const contactUsers = contacts.map((c) => c.user).filter(Boolean)
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Shared payments</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Groups</h1>
         <Link
           to="/groups/new"
           className="flex items-center gap-1 text-sm text-[var(--color-primary)] font-medium"
@@ -18,6 +22,34 @@ export function GroupsListPage() {
           <Plus className="h-4 w-4" />
           New
         </Link>
+      </div>
+
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+          <div className="text-sm font-semibold">Contacts</div>
+          <Link to="/contacts" className="text-xs text-[var(--color-primary)] font-medium">
+            Manage
+          </Link>
+        </div>
+        {contactUsers.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-[var(--color-muted-foreground)]">
+            No contacts yet. Open Manage to add people.
+          </div>
+        ) : (
+          <div>
+            {contactUsers.slice(0, 4).map((u, i) => (
+              <div key={u.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Avatar name={u.display_name} color={u.color} size="sm" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{u.display_name}</div>
+                    <div className="text-xs text-[var(--color-muted-foreground)] truncate">{u.handle}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">

@@ -5,7 +5,6 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 ## Pending
 - task-12: Split buttons on payment rows — `task-12-payment-split-buttons.md`
 - task-15: PWA — installable on mobile — `task-15-pwa.md`
-- task-16: Contacts (view + add) — `task-16-contacts.md`
 - task-17: P2P split with contact — `task-17-p2p-split.md` (depends: task-16)
 - task-18: Make payment / dummy payment — `task-18-make-payment.md`
 - task-20: Manage group members (add/remove UI) — `task-20-manage-members.md`
@@ -23,6 +22,7 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 - task-10: route-level lazy loading
 - task-13: Account switcher (demo)
 - task-21: Delete group
+- task-16: Contacts (view + add)
 
 ## Skipped (not worth for hackathon scope)
 - task-03: TypeScript migration — too heavy, no demo value

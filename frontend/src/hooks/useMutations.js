@@ -143,3 +143,14 @@ export function useDeleteGroup(groupId) {
     onSuccess: () => invalidateGlobal(qc),
   })
 }
+
+export function useAddGroupMember(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (userId) => (await api.post(`/groups/${groupId}/members`, { user_id: userId })).data,
+    onSuccess: () => {
+      invalidateGroup(qc, groupId)
+      invalidateGlobal(qc)
+    },
+  })
+}
