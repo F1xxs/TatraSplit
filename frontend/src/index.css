@@ -4,23 +4,23 @@
   --color-background: hsl(0 0% 0%);
   --color-foreground: hsl(0 0% 98%);
 
-  --color-card: hsl(0 0% 14%);
+  --color-card: hsl(0 0% 9%);
   --color-card-foreground: hsl(0 0% 98%);
-  --color-card-elevated: hsl(0 0% 18%);
+  --color-card-elevated: hsl(0 0% 9%);
 
-  --color-popover: hsl(0 0% 14%);
+  --color-popover: hsl(0 0% 9%);
   --color-popover-foreground: hsl(0 0% 98%);
 
   --color-primary: hsl(210 90% 62%);
   --color-primary-foreground: hsl(240 10% 4%);
 
-  --color-secondary: hsl(0 0% 16%);
+  --color-secondary: hsl(0 0% 9%);
   --color-secondary-foreground: hsl(0 0% 98%);
 
-  --color-muted: hsl(0 0% 16%);
+  --color-muted: hsl(0 0% 9%);
   --color-muted-foreground: hsl(240 5% 65%);
 
-  --color-accent: hsl(0 0% 20%);
+  --color-accent: hsl(0 0% 9%);
   --color-accent-foreground: hsl(0 0% 98%);
 
   --color-destructive: hsl(0 75% 62%);
@@ -32,8 +32,8 @@
   --color-warning: hsl(38 92% 60%);
   --color-info: hsl(199 89% 65%);
 
-  --color-border: hsl(240 5% 15%);
-  --color-input: hsl(240 5% 15%);
+  --color-border: hsl(0 0% 9%);
+  --color-input: hsl(0 0% 9%);
   --color-ring: hsl(210 90% 62%);
 
   --color-chart-1: hsl(210 90% 62%);
@@ -107,11 +107,11 @@
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(240 5% 18%);
+    background: hsl(0 0% 9%);
     border-radius: 8px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(240 5% 25%);
+    background: hsl(0 0% 9%);
   }
 }
 

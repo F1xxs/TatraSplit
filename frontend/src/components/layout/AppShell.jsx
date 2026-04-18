@@ -93,7 +93,7 @@ export function AppShell() {
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar me={me} onStub={() => toast({ title: 'Feature not available in demo' })} />
-        <main className="flex-1 w-full mx-auto max-w-3xl lg:max-w-4xl px-4 pb-28 pt-4 lg:pt-8">
+        <main className="flex-1 w-full mx-auto max-w-3xl lg:max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+9.25rem)] pt-4 lg:pb-10 lg:pt-8">
           <Outlet />
         </main>
         <BottomNav />
@@ -107,7 +107,7 @@ function TopBar({ me, onStub }) {
   const isDashboard = location.pathname === '/'
 
   return (
-    <header className="lg:hidden sticky top-0 z-30 bank-bar">
+    <header className="lg:hidden sticky top-0 z-30 bank-bar shadow-[0_8px_24px_rgba(0,0,0,0.45)]">
       <div
         className={cn(
           'px-4 h-14',
