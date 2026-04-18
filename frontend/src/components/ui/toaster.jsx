@@ -28,7 +28,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={{ toast, dismiss }}>
       {children}
-      <div className="pointer-events-none fixed inset-x-3 bottom-20 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-full sm:max-w-sm">
+      <div className="pointer-events-none fixed inset-x-3 bottom-24 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-6 sm:w-full sm:max-w-sm">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
         ))}
@@ -52,10 +52,10 @@ const iconMap = {
 }
 
 const styleMap = {
-  default: 'border-[var(--color-border)] bg-[var(--color-card-elevated)]',
-  success: 'border-[var(--color-success)]/40 bg-[var(--color-card-elevated)]',
-  error: 'border-[var(--color-destructive)]/50 bg-[var(--color-card-elevated)]',
-  info: 'border-[var(--color-info)]/40 bg-[var(--color-card-elevated)]',
+  default: 'border-[var(--color-primary)]/30 bg-[var(--color-card-elevated)]',
+  success: 'border-[var(--color-success)]/35 bg-[var(--color-card-elevated)]',
+  error: 'border-[var(--color-destructive)]/45 bg-[var(--color-card-elevated)]',
+  info: 'border-[var(--color-info)]/35 bg-[var(--color-card-elevated)]',
 }
 
 const iconColorMap = {
@@ -78,7 +78,7 @@ function ToastItem({ toast, onDismiss }) {
   return (
     <div
       className={cn(
-        'pointer-events-auto relative max-w-full overflow-hidden rounded-xl border p-3 pr-8 shadow-xl backdrop-blur sm:p-4 sm:pr-8',
+        'pointer-events-auto relative max-w-full overflow-hidden rounded-xl border p-3 pr-9 shadow-xl ring-1 ring-white/5 sm:p-4 sm:pr-10',
         styleMap[toast.variant] || styleMap.default,
       )}
       style={{
@@ -101,9 +101,9 @@ function ToastItem({ toast, onDismiss }) {
       <button
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="absolute right-2 top-2 rounded p-1 text-[var(--color-muted-foreground)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-foreground)] transition"
+        className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded leading-none text-[var(--color-muted-foreground)] transition hover:bg-[var(--color-secondary)] hover:text-[var(--color-foreground)] sm:right-3 sm:top-3"
       >
-        <X className="h-3.5 w-3.5" />
+        <X className="h-4 w-4" />
       </button>
     </div>
   )
