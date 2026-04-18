@@ -11,6 +11,7 @@ const SettleUpPage   = lazy(() => import('@/pages/SettleUpPage').then((m) => ({ 
 const ActivityPage   = lazy(() => import('@/pages/ActivityPage').then((m) => ({ default: m.ActivityPage })))
 const NewGroupPage   = lazy(() => import('@/pages/NewGroupPage').then((m) => ({ default: m.NewGroupPage })))
 const JoinGroupPage  = lazy(() => import('@/pages/JoinGroupPage').then((m) => ({ default: m.JoinGroupPage })))
+const PaymentPage    = lazy(() => import('@/pages/PaymentPage').then((m) => ({ default: m.PaymentPage })))
 
 function PageFallback() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
         <Route path="groups/:id/expenses/new"      element={page(<AddExpensePage />)} />
         <Route path="groups/:id/settle"            element={page(<SettleUpPage />)} />
         <Route path="activity"                     element={page(<ActivityPage />)} />
+        <Route path="payment"                      element={page(<PaymentPage />)} />
         <Route path="join/:token"                  element={page(<JoinGroupPage />)} />
         <Route path="*"                            element={<Navigate to="/" replace />} />
       </Route>

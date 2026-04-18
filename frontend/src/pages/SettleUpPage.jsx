@@ -1,12 +1,4 @@
 import { Avatar } from '@/components/ui/avatar'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toaster'
 import { useGroup, useGroupBalances, useGroupSettlements } from '@/hooks/useGroups'
@@ -15,8 +7,7 @@ import { useSettle } from '@/hooks/useMutations'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { ArrowLeft, ArrowRight, Check, Coins, Clock } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { format } from 'date-fns'
 
 export function SettleUpPage() {
@@ -27,7 +18,7 @@ export function SettleUpPage() {
   const { data: me } = useMe()
   const settle = useSettle(id)
   const { toast } = useToast()
-  const [confirmPayTransfer, setConfirmPayTransfer] = useState(null)
+  const navigate = useNavigate()
 
   const members = group?.members || []
   const byId = (uid) => members.find((m) => m.id === uid)
@@ -58,28 +49,14 @@ export function SettleUpPage() {
     )
   }
 
-  const handleConfirmPay = (t) => {
-    setConfirmPayTransfer(t)
-  }
-
-  const handlePay = () => {
-    if (!confirmPayTransfer) return
-    settle.mutate(
-      {
-        from_user: confirmPayTransfer.from_user,
-        to_user: confirmPayTransfer.to_user,
-        amount_cents: confirmPayTransfer.amount_cents,
-        currency: group?.currency || 'EUR',
-        method: 'manual',
-      },
-      {
-        onSuccess: () => {
-          toast({ title: 'Payment recorded', description: 'The transfer was marked as paid.' })
-          setConfirmPayTransfer(null)
-        },
-        onError: () => toast({ variant: 'error', title: 'Failed', description: 'Could not record payment.' }),
-      },
-    )
+  const handlePayInApp = (t) => {
+    const to = byId(t.to_user)
+    const params = new URLSearchParams()
+    if (to?.handle) params.set('to', to.handle)
+    params.set('toUser', t.to_user)
+    params.set('amount', String(t.amount_cents))
+    params.set('groupId', String(id))
+    navigate(`/payment?${params.toString()}`)
   }
 
   const noRelated = !isLoading && relatedTransfers.length === 0
@@ -116,20 +93,20 @@ export function SettleUpPage() {
             <Section label="YOU OWE" labelColor="text-[#E84040]">
               {youOwe.map((t, idx) => (
                 <Row key={idx}>
-                  <TransferCard
-                    from={byId(t.from_user)}
-                    to={byId(t.to_user)}
-                    amountCents={t.amount_cents}
-                    currency={group?.currency || 'EUR'}
-                    amountColor="#E84040"
-                    onAction={() => handleConfirmPay(t)}
-                    isPending={settle.isPending}
-                    actionLabel="Pay"
-                    actionVariant="danger"
-                  />
-                </Row>
-              ))}
-            </Section>
+                    <TransferCard
+                      from={byId(t.from_user)}
+                      to={byId(t.to_user)}
+                      amountCents={t.amount_cents}
+                      currency={group?.currency || 'EUR'}
+                      amountColor="#E84040"
+                      onAction={() => handlePayInApp(t)}
+                      isPending={false}
+                      actionLabel="Pay in app"
+                      actionVariant="danger"
+                    />
+                  </Row>
+                ))}
+              </Section>
           )}
 
           {youAreOwed.length > 0 && (
@@ -187,36 +164,6 @@ export function SettleUpPage() {
         </div>
       )}
 
-      <Dialog
-        open={!!confirmPayTransfer}
-        onOpenChange={(open) => !open && setConfirmPayTransfer(null)}
-      >
-        <DialogContent onClose={() => setConfirmPayTransfer(null)}>
-          <DialogHeader>
-            <DialogTitle>Confirm payment</DialogTitle>
-            <DialogDescription>
-              {confirmPayTransfer
-                ? `Pay ${formatMoney(confirmPayTransfer.amount_cents, group?.currency || 'EUR')} to ${byId(confirmPayTransfer.to_user)?.display_name || 'this member'}?`
-                : ''}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <button
-              onClick={() => setConfirmPayTransfer(null)}
-              className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-foreground)] hover:bg-[var(--color-secondary)]"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handlePay}
-              disabled={settle.isPending}
-              className="rounded-full bg-[#E84040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d13434] disabled:opacity-50"
-            >
-              Confirm pay
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
