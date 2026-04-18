@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight, CreditCard, Building2, RefreshCw,
-  Share2, ChevronRight, ChevronLeft, Mail,
+  Share2, ChevronRight, ChevronLeft,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GroupCard } from '@/components/shared/GroupCard'
@@ -43,19 +43,6 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top greeting row */}
-      <div className="flex items-center justify-between">
-        <button onClick={stub} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors">
-          <Mail className="h-5 w-5" />
-        </button>
-        <button
-          onClick={stub}
-          className="text-xs text-[var(--color-primary)] font-medium"
-        >
-          Customize
-        </button>
-      </div>
-
       {/* Accounts section */}
       <section>
         <h2 className="text-base font-semibold mb-3">Accounts</h2>
