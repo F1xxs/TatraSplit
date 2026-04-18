@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Check } from 'lucide-react'
 import { Sheet, SheetHeader, SheetTitle, SheetDescription, SheetContent, SheetFooter } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Avatar } from '@/components/ui/avatar'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { SplitEditor, distributeEqual } from '@/components/shared/SplitEditor'
 import { useGroup } from '@/hooks/useGroups'
@@ -39,7 +37,6 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
   const [amount, setAmount] = useState(0)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('food')
-  const [paidBy, setPaidBy] = useState(null)
   const [splitType, setSplitType] = useState('equal')
   const [split, setSplit] = useState([])
 
@@ -48,15 +45,10 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
       setAmount(0)
       setDescription('')
       setCategory('food')
-      setPaidBy(null)
       setSplitType('equal')
       setSplit([])
     }
   }, [open])
-
-  useEffect(() => {
-    if (open && paidBy == null && me) setPaidBy(me.id)
-  }, [open, me, paidBy])
 
   useEffect(() => {
     if (open && splitType === 'equal' && members.length && amount > 0) {
@@ -70,14 +62,14 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
   const canSubmit = useMemo(() => {
     if (amount <= 0) return false
     if (!description.trim()) return false
-    if (!paidBy) return false
+    if (!me?.id) return false
     if (!split.length) return false
     if (splitType === 'custom') {
       const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
       if (sum !== amount) return false
     }
     return true
-  }, [amount, description, paidBy, split, splitType])
+  }, [amount, description, me, split, splitType])
 
   const submit = async () => {
     try {
@@ -86,7 +78,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
         category,
         amount_cents: amount,
         currency: group?.currency || 'EUR',
-        paid_by: paidBy,
+        paid_by: me.id,
         split_type: splitType,
         custom_split: splitType === 'equal' ? [] : split,
       })
@@ -152,34 +144,6 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
                 >
                   <span>{c.emoji}</span>
                   {c.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Paid by */}
-        <div>
-          <Label>Paid by</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {members.map((m) => {
-              const mid = m.id
-              const active = paidBy === mid
-              return (
-                <button
-                  key={mid}
-                  type="button"
-                  onClick={() => setPaidBy(mid)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all',
-                    active
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15'
-                      : 'border-[var(--color-border)] hover:bg-[var(--color-secondary)]',
-                  )}
-                >
-                  <Avatar name={m.display_name} color={m.color} size="xs" />
-                  <span>{m.display_name}</span>
-                  {active && <Check className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
                 </button>
               )
             })}

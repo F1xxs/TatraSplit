@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, Check } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -557,7 +557,6 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
   const [amount, setAmount] = useState(0)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('home')
-  const [paidBy, setPaidBy] = useState(null)
   const [splitType, setSplitType] = useState('equal')
   const [split, setSplit] = useState([])
   const [frequency, setFrequency] = useState('monthly')
@@ -565,13 +564,9 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
   useEffect(() => {
     if (!open) {
       setAmount(0); setTitle(''); setCategory('home')
-      setPaidBy(null); setSplitType('equal'); setSplit([]); setFrequency('monthly')
+      setSplitType('equal'); setSplit([]); setFrequency('monthly')
     }
   }, [open])
-
-  useEffect(() => {
-    if (open && paidBy == null && me) setPaidBy(me.id)
-  }, [open, me, paidBy])
 
   useEffect(() => {
     if (open && splitType === 'equal' && members.length && amount > 0) {
@@ -581,13 +576,13 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
   }, [open, splitType, amount, members.length])
 
   const canSubmit = useMemo(() => {
-    if (amount <= 0 || !title.trim() || !paidBy || !split.length) return false
+    if (amount <= 0 || !title.trim() || !me?.id || !split.length) return false
     if (splitType === 'custom') {
       const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
       if (sum !== amount) return false
     }
     return true
-  }, [amount, title, paidBy, split, splitType])
+  }, [amount, title, me, split, splitType])
 
   const submit = async () => {
     try {
@@ -596,9 +591,9 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
         amount_cents: amount,
         currency,
         category,
-        paid_by: paidBy,
-        split_type: splitType,
-        custom_split: splitType === 'custom' ? split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })) : [],
+        paid_by: me.id,
+        split_type: 'custom',
+        custom_split: split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })),
         frequency,
       })
       toast({ variant: 'success', title: 'Recurring expense added' })
@@ -670,33 +665,6 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
                 >
                   <span>{c.emoji}</span>
                   {c.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Paid by */}
-        <div>
-          <Label>Paid by</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {members.map((m) => {
-              const active = paidBy === m.id
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPaidBy(m.id)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all',
-                    active
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15'
-                      : 'border-[var(--color-border)] hover:bg-[var(--color-secondary)]',
-                  )}
-                >
-                  <Avatar name={m.display_name} color={m.color} size="xs" />
-                  <span>{m.display_name}</span>
-                  {active && <Check className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
                 </button>
               )
             })}
