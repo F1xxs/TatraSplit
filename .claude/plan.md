@@ -4,12 +4,10 @@
 
 HackKosice challenge from Tatra banka: build an intuitive, demo-ready UX/UI for a **shared-payments** feature layered onto TatraBank's product surface — groups, automatic debt calculation, easy settlement. Inspired by MonoBank's "Group Expenses" (create a group from contacts, add expenses, send reminders) but a fresher take: visible math, one-tap settle, QR invites, and a dashboard that answers "who owes what?" at a glance.
 
-The repo today is two clean scaffolds — React 19 + Vite 8 frontend (single boilerplate `App.jsx`, no router, no UI lib) and a FastAPI backend (only `/api/v1/health` registered, Pydantic v2, no DB). We're building the whole feature from green-field.
-
 ## Decisions (confirmed)
 
 - **UI**: Tailwind + shadcn/ui, dark theme tuned to TatraBank's black/white aesthetic with one accent color.
-- **Backend**: FastAPI + **MongoDB Atlas** via `motor` async driver. We lean into Atlas visibly — there's a sponsor-prize opportunity.
+- **Backend**: FastAPI + **MongoDB Atlas** via `motor` async driver. Atlas SRV connection string (`mongodb+srv://`). No local MongoDB — Atlas is the only DB target.
 - **Auth**: hardcoded demo accounts (@misha, @lukas, @nina, @tomas), no login screen. A user-switcher dropdown in the app shell header lets you switch perspective. Selected handle stored in `localStorage`; sent as `X-User-Handle` header on every request. Backend `get_current_user()` reads that header, falls back to `settings.current_user_handle` env default.
 - **Scope**: Core (groups, expenses, balance, settle) + **QR/share-link invites**, **expense categories + donut chart**, **activity feed**, **debt-simplification algorithm**.
 - **Storage of money**: integer `amount_cents`. No floats anywhere in the pipeline.
@@ -21,29 +19,37 @@ Frontend (React 19 + Vite + Tailwind + shadcn + TanStack Query + axios)
    │  http://localhost:5173
    ▼
 Backend (FastAPI + motor)   http://localhost:8000/api/v1
-   │
+   │  X-User-Handle header for auth
    ▼
-MongoDB Atlas  —  database: tatra_split
+MongoDB Atlas (SRV, TLS/SSL built-in)  —  database: tatra_split
 ```
+
+## MongoDB Atlas setup
+
+- Connection: `mongodb+srv://<user>:<pw>@<cluster>.mongodb.net/?retryWrites=true&w=majority&appName=TatraSplit`
+- Atlas handles connection pooling, TLS/SSL, and retryable writes automatically via Motor.
+- `serverSelectionTimeoutMS=5000` — fast fail if Atlas unreachable.
+- Network access: whitelist `0.0.0.0/0` for hackathon demo.
+- **All reference IDs stored as strings** (not ObjectIds) in documents. Only `_id` is ObjectId.
 
 ## MongoDB collections (database `tatra_split`)
 
 All ids serialized as strings in API responses. Amounts in integer cents.
 
 - **`users`** — `{_id, display_name, handle (unique), avatar_url, color, created_at}`
-- **`groups`** — `{_id, name, emoji, currency, member_ids[], created_by, invite_token (unique), created_at}`
-- **`expenses`** — `{_id, group_id, description, category, amount_cents, currency, paid_by, split[{user_id, share_cents}], split_type: equal|custom, created_by, created_at, note}`. Invariant: `sum(split.share_cents) == amount_cents` (server rebalances 1-cent rounding).
-- **`settlements`** — `{_id, group_id, from_user, to_user, amount_cents, currency, method, created_at, note}`
-- **`activity`** — `{_id, group_id|null, actor_id, kind, payload, created_at}` for feed.
+- **`groups`** — `{_id, name, emoji, currency, member_ids[] (strings), created_by (string), invite_token (unique), created_at}`
+- **`expenses`** — `{_id, group_id (string), description, category, amount_cents, currency, paid_by (string), split[{user_id (string), share_cents}], split_type: equal|custom, created_by (string), created_at, note}`. Invariant: `sum(split.share_cents) == amount_cents` — last participant absorbs rounding cent.
+- **`settlements`** — `{_id, group_id (string), from_user (string), to_user (string), amount_cents, currency, method, created_at, note}`
+- **`activity`** — `{_id, group_id (string)|null, actor_id (string), kind, payload, created_at}` for feed.
 
-Indexes: `users.handle` unique, `groups.invite_token` unique, `groups.member_ids`, `expenses.group_id + created_at desc`, `expenses.paid_by`, `expenses.split.user_id`, `settlements.group_id + created_at desc`, `activity.created_at desc`, `activity.group_id + created_at desc`.
+Indexes: `users.handle` unique, `groups.invite_token` unique sparse, `groups.member_ids`, `expenses.group_id + created_at desc`, `expenses.paid_by`, `expenses.split.user_id`, `settlements.group_id + created_at desc`, `activity.created_at desc`, `activity.group_id + created_at desc`.
 
 ## Backend routes (all under `/api/v1`)
 
-Files live under [backend/app/api/routes/](backend/app/api/routes/), registered in [backend/app/main.py](backend/app/main.py).
+Files live under `backend/app/api/routes/`, registered in `backend/app/main.py` via lifespan.
 
 - `users.py` — `GET /users/me`, `GET /users?q=`
-- `groups.py` — `POST /groups`, `GET /groups`, `GET /groups/{id}`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `POST /groups/join/{invite_token}`, `GET /groups/{id}/invite`
+- `groups.py` — `POST /groups`, `GET /groups`, `GET /groups/{id}`, `POST /groups/{id}/members`, `DELETE /groups/{id}/members/{user_id}`, `POST /groups/join/{invite_token}[?as=@handle]`, `GET /groups/{id}/invite`
 - `expenses.py` — `POST /groups/{id}/expenses`, `GET /groups/{id}/expenses`, `GET /groups/{id}/expenses/{eid}`, `DELETE /groups/{id}/expenses/{eid}`
 - `settlements.py` — `POST /groups/{id}/settlements`, `GET /groups/{id}/settlements`
 - `balances.py` — `GET /groups/{id}/balances` (returns per-member net + `simplified_transfers`), `GET /me/balances` (cross-group rollup + `by_category_last_30d` for dashboard donut)
@@ -53,37 +59,80 @@ Each endpoint is async, uses `Depends(get_db)` and `Depends(get_current_user)`. 
 
 ### Services
 
-- [backend/app/services/balances.py](backend/app/services/balances.py) — aggregation pipelines to compute per-member net for a group and cross-group rollup for current user.
-- [backend/app/services/simplify.py](backend/app/services/simplify.py) — Splitwise-style **greedy max-creditor / max-debtor** pairing: two max-heaps (creditors, debtors), pop both, transfer `min(|a|,|b|)`, repeat. Produces ≤ n-1 transfers in O(n log n). Not provably minimal (NP-hard) but visibly clean; exactly what users expect.
-- [backend/app/services/activity.py](backend/app/services/activity.py) — thin helper to append activity entries.
-- [backend/app/services/seed.py](backend/app/services/seed.py) — creates `@misha` + `@lukas` + `@nina` + `@tomas`, two groups ("Roommates 🏠", "Tatras Trip ⛰️") with a handful of seeded expenses + one settlement. `--reset` flag drops collections first.
+- `backend/app/services/balances.py` — per-group and cross-group net balance computation over expenses + settlements.
+- `backend/app/services/simplify.py` — Splitwise-style **greedy max-creditor / max-debtor** pairing: two max-heaps, pop both, transfer `min(|a|,|b|)`, repeat. ≤ n-1 transfers, O(n log n).
+- `backend/app/services/activity.py` — `append_activity(db, *, group_id, actor_id, kind, payload)` helper.
+- `backend/app/services/seed.py` — creates @misha + @lukas + @nina + @tomas, two groups, expenses, one settlement. `--reset` drops collections first. Run: `python -m app.services.seed --reset`.
 
 ### Infrastructure
 
-- [backend/app/core/db.py](backend/app/core/db.py) — `AsyncIOMotorClient`, startup ping, index creation, `get_db(request)` Depends.
-- [backend/app/core/security.py](backend/app/core/security.py) — `get_current_user()` returns the user doc where `handle == settings.current_user_handle`; auto-creates it if missing.
-- [backend/app/main.py](backend/app/main.py) — `@asynccontextmanager` lifespan to open/close motor and set `app.state.db`; register all routers.
-- [backend/app/core/config.py](backend/app/core/config.py) — add `mongo_uri`, `mongo_db` (default `tatra_split`), `current_user_handle` (default `@misha`).
-- [backend/requirements.txt](backend/requirements.txt) — add `motor>=3.6.0`, `pymongo>=4.9.0`.
-- [backend/.env.example](backend/.env.example) — document `MONGO_URI`, `MONGO_DB`, `CURRENT_USER_HANDLE`.
+- `backend/app/core/db.py` — `AsyncIOMotorClient` with Atlas SRV URI, startup ping, index creation, `get_db(request)` Depends.
+- `backend/app/core/security.py` — `get_current_user()`: reads `X-User-Handle` header, falls back to `settings.current_user_handle`.
+- `backend/app/core/config.py` — `mongo_uri`, `mongo_db`, `current_user_handle` via pydantic-settings.
+- `backend/app/lib.py` — `sdoc(doc)` / `sdocs(docs)`: serialize MongoDB docs (ObjectId→str, datetime→ISO, `_id`→`id`).
+- `backend/app/main.py` — `@asynccontextmanager` lifespan: connect Atlas on startup, close on shutdown; all routers registered.
+
+### SettleUp — Pay now (TODO)
+
+The "Pay now" button on `SettleUpPage` currently shows a toast placeholder. Backend integration requires a TatraBank payment API call — marked as future work. When implemented: `POST /groups/{id}/payments` → calls bank API → on success inserts a settlement doc automatically.
 
 ## Frontend architecture
 
-Base: [frontend/src/](frontend/src/).
+Base: `frontend/src/`.
 
-**New deps**: `react-router-dom`, `@tanstack/react-query`, `axios`, `tailwindcss` + `@tailwindcss/vite`, `class-variance-authority clsx tailwind-merge lucide-react tailwindcss-animate`, `qrcode.react`, `recharts`, `date-fns`, `zod`, `react-hook-form`, `@hookform/resolvers`.
+**State**: TanStack Query only. After each mutation invalidate `['group', id]`, `['balances', 'me']`, `['group', id, 'activity']`.
 
-**shadcn components** (after `npx shadcn init` with dark preset):
-`button card dialog sheet input label avatar badge tabs separator scroll-area sonner dropdown-menu tooltip skeleton chart toggle-group select`.
+### Routes
 
-**State**: TanStack Query is the state layer. After each mutation we invalidate the affected keys (`['group', id]`, `['balances','me']`, `['group', id, 'activity']`). No Redux/Zustand needed.
+| Path | Page | Purpose |
+|---|---|---|
+| `/` | Dashboard | Cross-group "you owe / owed to you", category donut, group list, recent activity |
+| `/groups` | GroupsList | Full list |
+| `/groups/new` | NewGroup | Create: name, emoji, currency, member picker |
+| `/groups/:id` | GroupDetail | Tabs: Expenses / Balances / Activity + Invite + Settle buttons |
+| `/groups/:id/expenses/new` | AddExpense | Amount → desc → category → payer → split (equal/custom) |
+| `/groups/:id/settle` | SettleUp | "You owe" section (Mark as paid + Pay now) / "You are owed" section (Mark as paid) |
+| `/activity` | ActivityPage | Global feed |
+| `/join/:token` | JoinGroup | Auto-joins via invite token (`?as=@handle` for demo switching) |
 
-### Key flows
+## Verification (end-to-end)
 
-**Create & invite** — `POST /groups` → redirect to detail → "Invite" button opens `QRInviteDialog` rendering a `qrcode.react` of `window.location.origin + "/join/" + token` with copy-link.
+`backend/.env`:
+```
+APP_NAME=TatraSplit API
+DEBUG=true
+API_PREFIX=/api/v1
+MONGO_URI=mongodb+srv://<user>:<pw>@<cluster>.mongodb.net/?retryWrites=true&w=majority&appName=TatraSplit
+MONGO_DB=tatra_split
+CURRENT_USER_HANDLE=@misha
+```
 
-**Add expense** — big `MoneyInput`, category chips (`ToggleGroup`), payer avatars, `SplitEditor` (Equal/Custom tabs with live remainder bar). Submit invalidates group + balances.
+Run:
+```bash
+# Backend
+cd backend && source .venv/bin/activate
+pip install -r requirements.txt
+python -m app.services.seed --reset
+uvicorn app.main:app --reload  # http://localhost:8000
 
-**Settle up** — reads `simplified_transfers` from `/groups/:id/balances`; each row is "Misha → Lukas €12.50 [Mark paid]". Optimistic removal + `POST /settlements`. Empty state when done.
+# Frontend
+cd frontend && npm install && npm run dev  # http://localhost:5173
+```
 
+Visit `http://localhost:5173` and walk the demo:
+1. Dashboard shows non-zero "You owe / You are owed" + donut + 2 groups.
+2. Open "Roommates" → see members, expenses, positive balance.
+3. Add €20 groceries split equally → UI updates without reload.
+4. "Settle up" → tap "Mark paid" on a simplified transfer → row removes, activity updates.
+5. "Invite" → QR renders, copy link works.
+6. `/activity` → chronological feed shows expense + settlement just created.
+7. Swagger at `http://localhost:8000/docs` exposes all routes.
 
+## Risks
+
+- **Atlas network at demo time** — whitelist `0.0.0.0/0` in Atlas Network Access before the demo.
+- **Rounding on equal splits** (€10/3 = 333/333/334) — last participant gets the remainder cent.
+- **QR "join" feels fake with one real user** — `?as=@handle` on JoinGroup lets you live-demo joining as Lukas/Nina.
+- **Debt simplification edge cases** (all-zero balances) — guarded by `abs(net) > 1` check.
+- **Custom split UX is a rabbit hole** — ship equal-only first.
+- **Pay now (TatraBank integration)** — stub toast for now; real bank API call is future work.
