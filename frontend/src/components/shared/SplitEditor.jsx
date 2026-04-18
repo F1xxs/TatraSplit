@@ -75,7 +75,7 @@ export function SplitEditor({
         <TabsContent value="equal">
           <div className="space-y-1.5">
             {members.map((m) => {
-              const mid = m.id || m._id
+              const mid = m.id
               const included = includedIds.includes(mid)
               const share = recomputedEqual.find((s) => s.user_id === mid)?.share_cents || 0
               return (
@@ -122,7 +122,7 @@ export function SplitEditor({
         <TabsContent value="custom">
           <div className="space-y-1.5">
             {members.map((m) => {
-              const mid = m.id || m._id
+              const mid = m.id
               const share = split.find((s) => s.user_id === mid)?.share_cents ?? 0
               return (
                 <div

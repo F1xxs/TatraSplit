@@ -78,39 +78,6 @@ Base: [frontend/src/](frontend/src/).
 
 **State**: TanStack Query is the state layer. After each mutation we invalidate the affected keys (`['group', id]`, `['balances','me']`, `['group', id, 'activity']`). No Redux/Zustand needed.
 
-### Folders
-
-```
-src/
-  main.jsx                   (wrap QueryClientProvider, BrowserRouter, <Toaster/>)
-  App.jsx                    (route tree + <AppShell>)
-  index.css                  (Tailwind directives + shadcn CSS vars, dark default)
-  lib/       api.js, queryKeys.js, format.js, utils.js
-  hooks/     useMe, useGroups, useGroup, useActivity, useMutations
-  components/
-    ui/                                  (shadcn-generated)
-    layout/    AppShell.jsx, BottomNav.jsx
-    shared/    BalancePill, MemberAvatar, AvatarStack, CategoryIcon,
-               ExpenseRow, GroupCard, QRInviteDialog, CategoryDonut,
-               ActivityItem, MoneyInput, SplitEditor
-  pages/     DashboardPage, GroupsListPage, GroupDetailPage,
-             AddExpensePage, SettleUpPage, ActivityPage,
-             JoinGroupPage, NewGroupPage
-```
-
-### Routes
-
-| Path | Page | Purpose |
-|---|---|---|
-| `/` | Dashboard | Cross-group "you owe / owed to you", category donut, group list, recent activity |
-| `/groups` | GroupsList | Full list (dashboard shows top few) |
-| `/groups/new` | NewGroup | Create: name, emoji, currency, member picker |
-| `/groups/:id` | GroupDetail | Tabs: Expenses / Balances / Activity + Invite + Settle buttons |
-| `/groups/:id/expenses/new` | AddExpense | Amount → desc → category → payer → split (equal/custom) |
-| `/groups/:id/settle` | SettleUp | Simplified transfer list, "Mark paid" → POST settlement |
-| `/activity` | ActivityPage | Global feed |
-| `/join/:token` | JoinGroup | Auto-joins via invite token (supports `?as=@handle` for demo) |
-
 ### Key flows
 
 **Create & invite** — `POST /groups` → redirect to detail → "Invite" button opens `QRInviteDialog` rendering a `qrcode.react` of `window.location.origin + "/join/" + token` with copy-link.
@@ -119,69 +86,4 @@ src/
 
 **Settle up** — reads `simplified_transfers` from `/groups/:id/balances`; each row is "Misha → Lukas €12.50 [Mark paid]". Optimistic removal + `POST /settlements`. Empty state when done.
 
-## Build order (24h)
 
-| Hour | Milestone |
-|---|---|
-| 0–1 | Deps + scaffolding. Tailwind + shadcn init. Router + AppShell. Dark theme tokens. Backend motor wiring + Atlas ping. |
-| 1–3 | Backend: users/groups models + routes + invite token. Seed script (Misha + 3 friends + 2 groups + expenses). |
-| 3–5 | Backend: expenses + settlements + balances aggregation + simplification. Verify via Swagger. |
-| 5–7 | Frontend dashboard wired to real data (`/users/me`, `/me/balances`, groups list). BalancePill, GroupCard, CategoryDonut. |
-| 7–9 | Group detail + Expenses tab + Add-expense Sheet. Query invalidation. **This is the screenshot-worthy milestone.** |
-| 9–11 | Balances tab + SettleUp page + optimistic mark-paid. |
-| 11–13 | QR invite dialog + JoinGroupPage. Activity writes from backend on each mutation + activity feed. |
-| 13–15 | Category chips + donut on dashboard and group detail. Category filter on expense list. |
-| 15–17 | Polish: skeletons, empty states, toasts, money/time formatting, dark theme tuning, bottom nav on mobile. |
-| 17–19 | Stretch: `?as=` demo-switching on JoinGroup, confetti on fully settled, small balance-change animations. |
-| 19–21 | Demo prep: seed reset, dress rehearsal, "Powered by MongoDB Atlas" footer chip, crash-fix. |
-| 21–24 | Buffer. |
-
-**Cut order if slipping**: custom split editor → per-group donut → mobile bottom nav → activity page UI (keep data) → QR page (keep shareable link text).
-
-## Critical files to create
-
-Backend: [backend/app/main.py](backend/app/main.py), [backend/app/core/{config,db,security}.py](backend/app/core/), [backend/app/api/deps.py](backend/app/api/deps.py), [backend/app/api/routes/{users,groups,expenses,settlements,balances,activity}.py](backend/app/api/routes/), [backend/app/models/{common,user,group,expense,settlement,activity,balance}.py](backend/app/models/), [backend/app/services/{balances,simplify,activity,seed}.py](backend/app/services/), [backend/requirements.txt](backend/requirements.txt), [backend/.env.example](backend/.env.example).
-
-Frontend: [frontend/package.json](frontend/package.json), [frontend/vite.config.js](frontend/vite.config.js), `frontend/tailwind.config.js` (new), `frontend/postcss.config.js` (new), `frontend/components.json` (new), [frontend/src/index.css](frontend/src/index.css), [frontend/src/main.jsx](frontend/src/main.jsx), [frontend/src/App.jsx](frontend/src/App.jsx), plus all files under `src/{lib,hooks,components,pages}`.
-
-## Verification (end-to-end)
-
-`backend/.env`:
-```
-APP_NAME=TatraSplit API
-DEBUG=true
-API_PREFIX=/api/v1
-MONGO_URI=mongodb+srv://<user>:<pw>@<cluster>.mongodb.net/?retryWrites=true&w=majority
-MONGO_DB=tatra_split
-CURRENT_USER_HANDLE=@misha
-```
-
-Run:
-```bash
-# Backend
-cd backend && source .venv/bin/activate
-pip install -r requirements.txt
-python -m app.services.seed --reset
-uvicorn app.main:app --reload
-
-# Frontend
-cd frontend && npm install && npm run dev
-```
-
-Visit `http://localhost:5173` and walk the demo:
-1. Dashboard shows non-zero "You owe / You are owed" + donut + 2 groups.
-2. Open "Roommates" → see members, expenses, positive balance.
-3. Add €20 groceries split equally → UI updates without reload.
-4. "Settle up" → tap "Mark paid" on a simplified transfer → row removes, activity updates.
-5. "Invite" → QR renders, copy link works.
-6. `/activity` → chronological feed shows expense + settlement just created.
-7. Swagger at `http://localhost:8000/docs` exposes all routes.
-
-## Risks
-
-- **shadcn + Tailwind init can eat 2h** — do it first, follow docs literally, commit as soon as a button renders.
-- **Atlas flakiness at demo time** — whitelist `0.0.0.0/0`, consider a local `mongod` fallback via env swap.
-- **Rounding on equal splits** (€10/3 = 333/333/334) — deterministic remainder distribution in the service.
-- **QR "join" feels fake with one real user** — the `?as=@handle` query-param on JoinGroup lets you live-demo joining as Lukas/Nina.
-- **Debt simplification edge cases** (all-zero balances) — guard `abs(net) < 1`; sanity-check with seed before demo.
-- **Custom split UX is a rabbit hole** — ship equal-only first, add custom only after SettleUp is end-to-end.

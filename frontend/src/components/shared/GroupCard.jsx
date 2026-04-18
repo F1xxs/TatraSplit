@@ -15,7 +15,7 @@ export function GroupCard({ group, className }) {
 
   return (
     <Link
-      to={`/groups/${group.id || group._id}`}
+      to={`/groups/${group.id}`}
       className={cn(
         'flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--color-card-elevated)] transition-colors',
         className,

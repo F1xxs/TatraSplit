@@ -18,7 +18,7 @@ export function BottomNav() {
   function handlePayment() {
     const first = groups?.[0]
     if (first) {
-      navigate(`/groups/${first._id || first.id}/expenses/new`)
+      navigate(`/groups/${first.id}/expenses/new`)
       return
     }
     navigate('/groups/new')
@@ -30,6 +30,7 @@ export function BottomNav() {
 
   return (
     <nav
+      aria-label="Main navigation"
       className="lg:hidden fixed bottom-0 inset-x-0 z-[70] border-t border-white/15"
       style={{
         backgroundColor: 'var(--color-card-elevated)',

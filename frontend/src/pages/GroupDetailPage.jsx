@@ -10,6 +10,7 @@ import { ExpenseRow } from '@/components/shared/ExpenseRow'
 import { BalancePill } from '@/components/shared/BalancePill'
 import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
 import { ActivityItem } from '@/components/shared/ActivityItem'
+import { DataState } from '@/components/shared/DataState'
 import { QRInviteDialog } from '@/components/shared/QRInviteDialog'
 import { AddExpenseSheet } from './AddExpensePage'
 import { useMe } from '@/hooks/useMe'
@@ -26,9 +27,9 @@ import { cn } from '@/lib/utils'
 export function GroupDetailPage() {
   const { id } = useParams()
   const { data: group, isLoading } = useGroup(id)
-  const { data: expenses = [] } = useGroupExpenses(id)
+  const { data: expenses = [], isLoading: expLoading, error: expError, refetch: refetchExp } = useGroupExpenses(id)
   const { data: balances } = useGroupBalances(id)
-  const { data: activity = [] } = useGroupActivity(id)
+  const { data: activity = [], isLoading: actLoading, error: actError, refetch: refetchAct } = useGroupActivity(id)
   const { data: me } = useMe()
 
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -47,9 +48,7 @@ export function GroupDetailPage() {
 
   const members = group?.members || []
   const myNet =
-    balances?.members?.find(
-      (m) => m.user_id === me?.id || m.user_id === me?._id,
-    )?.net_cents ?? 0
+    balances?.members?.find((m) => m.user_id === me?.id)?.net_cents ?? 0
 
   const categoryData = aggregateByCategory(expenses)
 
@@ -115,9 +114,13 @@ export function GroupDetailPage() {
         </TabsList>
 
         <TabsContent value="expenses" className="mt-4">
-          {expenses.length === 0 ? (
-            <EmptyExpenses onAdd={() => setAddOpen(true)} />
-          ) : (
+          <DataState
+            loading={expLoading}
+            error={expError}
+            empty={expenses.length === 0}
+            emptyContent={<EmptyExpenses onAdd={() => setAddOpen(true)} />}
+            onRetry={refetchExp}
+          >
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
               {groupExpensesByDate(expenses).map(({ date, items }) => (
                 <div key={date}>
@@ -125,7 +128,7 @@ export function GroupDetailPage() {
                     {date}
                   </div>
                   {items.map((e, i) => (
-                    <div key={e.id || e._id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                    <div key={e.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
                       <ExpenseRow
                         expense={e}
                         me={me}
@@ -137,7 +140,7 @@ export function GroupDetailPage() {
                 </div>
               ))}
             </div>
-          )}
+          </DataState>
         </TabsContent>
 
         <TabsContent value="balances" className="mt-4 space-y-4">
@@ -158,7 +161,7 @@ export function GroupDetailPage() {
                     <MemberBalanceRow
                       member={m}
                       currency={group?.currency || 'EUR'}
-                      isMe={m.user_id === me?.id || m.user_id === me?._id}
+                      isMe={m.user_id === me?.id}
                     />
                   </div>
                 ))}
@@ -196,19 +199,21 @@ export function GroupDetailPage() {
 
         <TabsContent value="activity" className="mt-4">
           <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-            {activity.length === 0 ? (
-              <div className="text-center text-sm text-[var(--color-muted-foreground)] py-12">
-                No activity yet.
-              </div>
-            ) : (
+            <DataState
+              loading={actLoading}
+              error={actError}
+              empty={activity.length === 0}
+              emptyMessage="No activity yet."
+              onRetry={refetchAct}
+            >
               <div>
                 {activity.map((a, i) => (
-                  <div key={a.id || a._id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                  <div key={a.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
                     <ActivityItem item={a} className="px-4" />
                   </div>
                 ))}
               </div>
-            )}
+            </DataState>
           </div>
         </TabsContent>
       </Tabs>

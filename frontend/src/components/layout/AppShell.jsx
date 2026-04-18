@@ -38,7 +38,7 @@ export function AppShell() {
           </Link>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3">
+        <nav className="flex-1 overflow-y-auto p-3" aria-label="Main navigation">
           <ul className="space-y-0.5">
             {navItems.map((item) => (
               <li key={item.to}>
@@ -54,7 +54,7 @@ export function AppShell() {
                     )
                   }
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-4 w-4" aria-hidden />
                   {item.label}
                 </NavLink>
               </li>
@@ -66,7 +66,7 @@ export function AppShell() {
               onClick={() => toast({ title: 'Feature not available in demo' })}
               className="flex items-center gap-3 w-full rounded-lg px-3 py-2.5 text-sm font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-foreground)] transition-colors"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4" aria-hidden />
               More
             </button>
           </div>

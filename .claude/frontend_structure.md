@@ -70,7 +70,30 @@ So every page can use React Query hooks, routing, and toasts without extra setup
 - bottom nav on mobile
 - `<Outlet />` where page content renders
 
+All page components are loaded via `React.lazy` + `Suspense` in `App.jsx`. Each route element is wrapped with `<Suspense fallback={<PageFallback />}>`. This splits the bundle per-route. When adding new pages, follow the same `lazy(() => import(...).then(m => ({ default: m.PageName })))` pattern.
+
 ## 5) Data layer and API behavior
+
+### `lib/normalize.js`
+
+Normalizes MongoDB `_id` → stable `id` field on entity objects. Applied at query boundary so UI code always uses `entity.id`.
+
+- `normalizeEntity(doc)` — top-level `_id` → `id` (string), strips `_id` key
+- `normalizeList(docs)` — maps `normalizeEntity` over arrays
+- `normalizeGroup(g)` — normalizes group + nested `members[]`
+
+Applied in all `queryFn` implementations. Mutation fns for `useCreateGroup` and `useJoinGroup` also normalize their responses.
+
+**Rule:** Never write `entity.id || entity._id` — always `entity.id`. If a new hook is added, apply `normalizeEntity` / `normalizeGroup` / `normalizeList` in its `queryFn`.
+
+### `lib/invalidation.js`
+
+Centralized React Query invalidation helpers used by all mutations:
+
+- `invalidateGlobal(qc)` — invalidates `groups`, `meBalances`, `activity`
+- `invalidateGroup(qc, id)` — invalidates `group`, `groupExpenses`, `groupBalances`, `groupActivity` for a specific group
+
+**Rule:** All mutations must call these helpers in `onSuccess` instead of repeating `invalidateQueries` calls inline.
 
 ### `lib/api.js`
 
@@ -119,6 +142,8 @@ Mutations:
 - settle payment
 - join group
 
+Each mutation calls `invalidateGroup` and/or `invalidateGlobal` from `lib/invalidation.js`. Invalidation rules are defined in one place — don't duplicate `invalidateQueries` calls inline.
+
 Each mutation invalidates related queries so UI refreshes everywhere:
 - group detail
 - balances
@@ -146,6 +171,16 @@ Feature UI pieces composed from primitives:
 - `SplitEditor` — equal/custom split editor with validation remainder
 - `QRInviteDialog` — invite QR + copy/share logic
 - `MoneyInput` — cents-based numeric input formatting
+- `DataState` — unified loading/empty/error state wrapper
+
+**`DataState` usage pattern:**
+```jsx
+<DataState loading={isLoading} error={error} empty={items.length === 0}
+           emptyMessage="Nothing yet." onRetry={refetch} loadingRows={3}>
+  <List ... />
+</DataState>
+```
+Use `emptyContent` prop for custom empty states with links/actions. Used in Dashboard, GroupsListPage, GroupDetailPage, ActivityPage.
 
 ### `components/layout/`
 

@@ -27,8 +27,8 @@ export function NewGroupPage() {
   const [currency, setCurrency] = useState('EUR')
   const [selected, setSelected] = useState(new Set())
 
-  const myId = me?.id || me?._id
-  const others = users.filter((u) => (u.id || u._id) !== myId)
+  const myId = me?.id
+  const others = users.filter((u) => u.id !== myId)
 
   const toggle = (handle) => {
     setSelected((s) => {
@@ -50,7 +50,7 @@ export function NewGroupPage() {
         member_handles: Array.from(selected),
       })
       toast({ variant: 'success', title: 'Group created' })
-      navigate(`/groups/${group.id || group._id}`)
+      navigate(`/groups/${group.id}`)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not create group', description: err.message })
     }

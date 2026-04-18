@@ -1,5 +1,5 @@
-import { Skeleton } from '@/components/ui/skeleton'
 import { BankTransactionRow } from '@/components/shared/ActivityItem'
+import { DataState } from '@/components/shared/DataState'
 import { useActivity } from '@/hooks/useGroups'
 import { format } from 'date-fns'
 
@@ -20,7 +20,7 @@ function groupByDate(items) {
 }
 
 export function ActivityPage() {
-  const { data: items = [], isLoading } = useActivity()
+  const { data: items = [], isLoading, error, refetch } = useActivity()
   const rows = groupByDate(items)
 
   return (
@@ -38,28 +38,25 @@ export function ActivityPage() {
       </div>
 
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-        {isLoading ? (
-          <div className="p-4 space-y-3">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-14 w-full" />
-            ))}
-          </div>
-        ) : items.length === 0 ? (
-          <div className="text-center text-sm text-[var(--color-muted-foreground)] py-16">
-            Nothing yet. Add an expense to get started.
-          </div>
-        ) : (
+        <DataState
+          loading={isLoading}
+          error={error}
+          empty={items.length === 0}
+          emptyMessage="Nothing yet. Add an expense to get started."
+          onRetry={refetch}
+          loadingRows={5}
+        >
           <div>
             {rows.map(({ dateLabel, item }, i) => (
               <BankTransactionRow
-                key={item.id || item._id}
+                key={item.id}
                 item={item}
                 border={i > 0 && !dateLabel}
                 dateLabel={dateLabel}
               />
             ))}
           </div>
-        )}
+        </DataState>
       </div>
     </div>
   )

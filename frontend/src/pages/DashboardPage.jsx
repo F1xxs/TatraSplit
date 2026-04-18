@@ -7,6 +7,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { GroupCard } from '@/components/shared/GroupCard'
 import { BankTransactionRow } from '@/components/shared/ActivityItem'
+import { DataState } from '@/components/shared/DataState'
 import { useMe, useMeBalances } from '@/hooks/useMe'
 import { useGroups, useActivity } from '@/hooks/useGroups'
 import { formatMoney } from '@/lib/format'
@@ -17,8 +18,8 @@ const STUB_IBAN = 'SK18 1100 1111 1111 3294 5724'
 export function DashboardPage() {
   const { data: me, isLoading: meLoading } = useMe()
   const { data: balances, isLoading: balLoading } = useMeBalances()
-  const { data: groups = [], isLoading: groupsLoading } = useGroups()
-  const { data: activity = [], isLoading: actLoading } = useActivity()
+  const { data: groups = [], isLoading: groupsLoading, error: groupsError, refetch: refetchGroups } = useGroups()
+  const { data: activity = [], isLoading: actLoading, error: actError, refetch: refetchAct } = useActivity()
   const { toast } = useToast()
   const navigate = useNavigate()
   const [cardIdx, setCardIdx] = useState(0)
@@ -141,15 +142,19 @@ export function DashboardPage() {
             <button
               onClick={() => setCardIdx((i) => Math.max(0, i - 1))}
               disabled={cardIdx === 0}
+              aria-label="Previous card"
               className="p-1 text-[var(--color-muted-foreground)] disabled:opacity-30"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" aria-hidden />
             </button>
-            <div className="flex gap-1.5">
-              {cards.map((_, i) => (
+            <div className="flex gap-1.5" role="tablist" aria-label="Account cards">
+              {cards.map((c, i) => (
                 <button
                   key={i}
                   onClick={() => setCardIdx(i)}
+                  role="tab"
+                  aria-selected={i === cardIdx}
+                  aria-label={c.label}
                   className={`h-1.5 rounded-full transition-all ${i === cardIdx ? 'w-5 bg-[var(--color-primary)]' : 'w-1.5 bg-[var(--color-border)]'}`}
                 />
               ))}
@@ -157,9 +162,10 @@ export function DashboardPage() {
             <button
               onClick={() => setCardIdx((i) => Math.min(cards.length - 1, i + 1))}
               disabled={cardIdx === cards.length - 1}
+              aria-label="Next card"
               className="p-1 text-[var(--color-muted-foreground)] disabled:opacity-30"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" aria-hidden />
             </button>
           </div>
         </div>
@@ -178,7 +184,7 @@ export function DashboardPage() {
             label="Payment"
             onClick={() => {
               const first = groups[0]
-              if (first) navigate(`/groups/${first._id || first.id}/expenses/new`)
+              if (first) navigate(`/groups/${first.id}/expenses/new`)
               else navigate('/groups/new')
             }}
           />
@@ -195,26 +201,27 @@ export function DashboardPage() {
             All
           </Link>
         </div>
-        {groupsLoading ? (
-          <div className="space-y-2">
-            {[0, 1].map((i) => (
-              <Skeleton key={i} className="h-16 w-full rounded-2xl" />
-            ))}
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">
-            <div className="text-sm text-[var(--color-muted-foreground)]">No shared payments yet.</div>
-            <Link to="/groups/new" className="mt-2 inline-block text-sm text-[var(--color-primary)] font-medium">
-              Create group →
-            </Link>
-          </div>
-        ) : (
+        <DataState
+          loading={groupsLoading}
+          error={groupsError}
+          empty={groups.length === 0}
+          emptyContent={
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">
+              <div className="text-sm text-[var(--color-muted-foreground)]">No shared payments yet.</div>
+              <Link to="/groups/new" className="mt-2 inline-block text-sm text-[var(--color-primary)] font-medium">
+                Create group →
+              </Link>
+            </div>
+          }
+          loadingRows={2}
+          onRetry={refetchGroups}
+        >
           <div className="space-y-2">
             {groups.slice(0, 3).map((g) => (
-              <GroupCard key={g.id || g._id} group={g} />
+              <GroupCard key={g.id} group={g} />
             ))}
           </div>
-        )}
+        </DataState>
       </section>
 
       {/* Recent transactions */}
@@ -226,21 +233,20 @@ export function DashboardPage() {
           </Link>
         </div>
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-          {actLoading ? (
-            <div className="p-4 space-y-3">
-              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : activity.length === 0 ? (
-            <div className="p-6 text-center text-sm text-[var(--color-muted-foreground)]">
-              No transactions yet.
-            </div>
-          ) : (
+          <DataState
+            loading={actLoading}
+            error={actError}
+            empty={activity.length === 0}
+            emptyMessage="No transactions yet."
+            onRetry={refetchAct}
+            loadingRows={3}
+          >
             <div>
               {activity.slice(0, 5).map((a, i) => (
-                <BankTransactionRow key={a.id || a._id} item={a} border={i > 0} />
+                <BankTransactionRow key={a.id} item={a} border={i > 0} />
               ))}
             </div>
-          )}
+          </DataState>
         </div>
       </section>
     </div>

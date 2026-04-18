@@ -20,7 +20,7 @@ export function SettleUpPage() {
   const [done, setDone] = useState(new Set())
 
   const members = group?.members || []
-  const byId = (uid) => members.find((m) => (m.id || m._id) === uid)
+  const byId = (uid) => members.find((m) => m.id === uid)
   const transfers = balances?.simplified_transfers || []
 
   const markPaid = async (idx, t) => {

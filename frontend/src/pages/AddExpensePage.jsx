@@ -55,12 +55,12 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
   }, [open])
 
   useEffect(() => {
-    if (open && paidBy == null && me) setPaidBy(me.id || me._id)
+    if (open && paidBy == null && me) setPaidBy(me.id)
   }, [open, me, paidBy])
 
   useEffect(() => {
     if (open && splitType === 'equal' && members.length && amount > 0) {
-      setSplit(distributeEqual(amount, members.map((m) => m.id || m._id)))
+      setSplit(distributeEqual(amount, members.map((m) => m.id)))
     }
   }, [open, splitType, amount, members.length])
 
@@ -162,7 +162,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
           <Label>Paid by</Label>
           <div className="mt-2 flex flex-wrap gap-2">
             {members.map((m) => {
-              const mid = m.id || m._id
+              const mid = m.id
               const active = paidBy === mid
               return (
                 <button

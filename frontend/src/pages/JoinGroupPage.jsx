@@ -26,7 +26,7 @@ export function JoinGroupPage() {
           variant: 'success',
           title: `Joined ${res?.name || 'group'}`,
         })
-        navigate(`/groups/${res.id || res._id}`, { replace: true })
+        navigate(`/groups/${res.id}`, { replace: true })
       } catch (err) {
         toast({ variant: 'error', title: 'Could not join', description: err.message })
       }

@@ -4,12 +4,10 @@ import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export function ExpenseRow({ expense, me, members = [], groupId, className }) {
-  const paidByMe = me && (expense.paid_by === me.id || expense.paid_by === me._id)
+  const paidByMe = me && expense.paid_by === me.id
   const myShare =
     me &&
-    (expense.split || []).find(
-      (s) => s.user_id === me.id || s.user_id === me._id,
-    )?.share_cents
+    (expense.split || []).find((s) => s.user_id === me.id)?.share_cents
 
   const myImpactCents =
     myShare != null
@@ -18,7 +16,7 @@ export function ExpenseRow({ expense, me, members = [], groupId, className }) {
         : -myShare
       : 0
 
-  const payer = members.find((m) => (m.id || m._id) === expense.paid_by)
+  const payer = members.find((m) => m.id === expense.paid_by)
   const payerName = payer?.display_name || 'someone'
 
   const isDebit = myImpactCents <= 0
