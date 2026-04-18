@@ -93,6 +93,31 @@ Default local base URL: `http://localhost:8000/api/v1`
 | GET | `/activity` | Global activity feed for current user |
 | GET | `/groups/{id}/activity` | Activity feed scoped to group |
 
+## Recurring
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/groups/{id}/recurring` | Active recurring expenses for group (sorted by next_due) |
+| POST | `/groups/{id}/recurring` | Create recurring expense (`title`, `amount_cents`, `currency`, `category`, `paid_by`, `split_type`, `custom_split[]`, `frequency`) |
+| DELETE | `/groups/{id}/recurring/{recurring_id}` | Deactivate recurring expense (soft delete) |
+| POST | `/admin/process-recurring` | Trigger processing of all due recurring expenses |
+
+### Recurring rules
+
+- `frequency`: `weekly`, `biweekly`, or `monthly`.
+- On processing, creates an expense in the group and advances `next_due`.
+- Delete is soft — sets `active: false`.
+
+## Admin
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/admin/status` | Collection document counts |
+| POST | `/admin/reset` | Drop all collections, reseed 4 demo users with 500 EUR each |
+| POST | `/admin/seed` | Idempotent seed (only if no users exist) |
+
+All admin endpoints accept optional `?secret=` query param (unused unless `ADMIN_SECRET` is configured).
+
 ## Frontend query mapping
 
 This is how frontend hooks currently map to endpoints:
@@ -110,4 +135,9 @@ This is how frontend hooks currently map to endpoints:
 - `useDeleteGroup(groupId)` -> `DELETE /groups/{group_id}`
 - `useAddExpense` -> `POST /groups/{id}/expenses`
 - `useSettle` -> `POST /groups/{id}/settlements`
+- `useGroupSettlements(id)` -> `GET /groups/{id}/settlements`
+- `useGroupRecurring(id)` -> `GET /groups/{id}/recurring`
+- `useCreateRecurring(id)` -> `POST /groups/{id}/recurring`
+- `useDeleteRecurring(id)` -> `DELETE /groups/{id}/recurring/{recurring_id}`
+- `usePayment` -> `POST /groups/{id}/settlements` (auto-finds/creates direct group first)
 - `useJoinGroup` -> `POST /groups/join/{invite_token}`

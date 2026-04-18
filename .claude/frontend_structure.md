@@ -32,7 +32,7 @@ Build/lint scripts from `package.json`:
   - `layout/` — shell/navigation (`AppShell`, `BottomNav`)
   - `shared/` — feature-level reusable UI blocks (`GroupCard`, `ExpenseRow`, `SplitEditor`, etc.)
   - `ui/` — low-level design-system primitives (`Button`, `Card`, `Dialog`, `Sheet`, `Tabs`, `Avatar`, `Badge`, `Input`, `Label`, `Separator`, `Skeleton`, `Toaster`, etc.)
-- `hooks/` — all query/mutation hooks (`useGroups`, `useMe`, `useMutations`)
+- `hooks/` — all query/mutation hooks (`useGroups`, `useMe`, `useMutations`, `useRecurring`)
 - `lib/` — infrastructure and helpers (`api`, query keys, formatting, mock backend)
 - `pages/` — route screens (`DashboardPage`, `GroupDetailPage`, `AddExpensePage`, etc.)
 - `index.css` — Tailwind import + theme tokens + base/global styles
@@ -61,6 +61,8 @@ So every page can use React Query hooks, routing, and toasts without extra setup
 - `/groups/:id/expenses/new` → `AddExpensePage`
 - `/groups/:id/settle` → `SettleUpPage`
 - `/activity` → `ActivityPage`
+- `/payment` → `PaymentPage`
+- `/admin` → `AdminPage`
 - `/join/:token` → `JoinGroupPage`
 - unknown routes redirect to `/`
 
@@ -90,8 +92,8 @@ Applied in all `queryFn` implementations. Mutation fns for `useCreateGroup` and 
 
 Centralized React Query invalidation helpers used by all mutations:
 
-- `invalidateGlobal(qc)` — invalidates `me`, `groups`, `meBalances`, `activity`
-- `invalidateGroup(qc, id)` — invalidates `group`, `groupExpenses`, `groupBalances`, `groupActivity` for a specific group
+- `invalidateGlobal(qc)` — invalidates `me`, `groups`, `meBalances`, `activity`, `users`
+- `invalidateGroup(qc, id)` — invalidates `group`, `groupExpenses`, `groupBalances`, `groupActivity`, `groupSettlements` for a specific group
 
 **Rule:** All mutations must call these helpers in `onSuccess` instead of repeating `invalidateQueries` calls inline.
 
@@ -130,15 +132,16 @@ So the frontend is currently usable even if backend is unavailable.
 ### Query keys (`lib/queryKeys.js`)
 
 Centralized key factory:
-- `['me']`, `['groups']`, `['group', id]`, `['group', id, 'expenses']`, etc.
+- `['me']`, `['groups']`, `['group', id]`, `['group', id, 'expenses']`, `['group', id, 'settlements']`, `['group', id, 'recurring']`, etc.
 
 ### Read hooks (`hooks/useMe.js`, `hooks/useGroups.js`)
 
 All data fetching goes through hooks:
 - `useMe`, `useMeBalances`
 - `useGroups`, `useGroup`
-- `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`
+- `useGroupExpenses`, `useGroupBalances`, `useGroupActivity`, `useGroupSettlements`
 - `useActivity`, `useUsers`
+- `useGroupRecurring` (from `useRecurring.js`)
 
 ### Mutation hooks (`hooks/useMutations.js`)
 
@@ -148,6 +151,9 @@ Mutations:
 - add expense
 - settle payment
 - join group
+- make payment (`usePayment` — finds/creates direct group, then posts settlement)
+- create/delete recurring (`useCreateRecurring`, `useDeleteRecurring` from `useRecurring.js`)
+- process recurring (`useProcessRecurring` from `useRecurring.js`)
 
 Each mutation calls `invalidateGroup` and/or `invalidateGlobal` from `lib/invalidation.js`. Invalidation rules are defined in one place — don't duplicate `invalidateQueries` calls inline.
 
@@ -213,6 +219,8 @@ Account switch flow:
 - `SettleUpPage`: simplified transfer list + "mark paid"
 - `NewGroupPage`: group creation form (name/emoji/currency/members)
 - `JoinGroupPage`: auto-join by invite token (supports `?as=@handle` in flow)
+- `PaymentPage`: P2P payment form (recipient search, amount, confirm, processing animation, success)
+- `AdminPage`: DB management panel (reset, seed, collection status)
 - `ActivityPage`: account-transaction style feed
 
 ## 9) Money and domain handling
