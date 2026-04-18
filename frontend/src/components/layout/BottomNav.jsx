@@ -1,18 +1,15 @@
-import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, ArrowLeftRight, ShoppingCart, Menu } from 'lucide-react'
+import { NavLink } from 'react-router-dom'
+import { Home, ArrowLeftRight, LayoutGrid, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useGroups } from '@/hooks/useGroups'
 import { useToast } from '@/components/ui/toaster'
 
 const navItems = [
   { to: '/', icon: Home, label: 'Home', end: true },
   { to: '/activity', icon: ArrowLeftRight, label: 'Transactions' },
-  { to: '/groups', icon: ShoppingCart, label: 'Offers' },
+  { to: '/groups', icon: LayoutGrid, label: 'Groups' },
 ]
 
 export function BottomNav() {
-  const { data: groups } = useGroups()
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   function handlePayment() {
@@ -34,20 +31,20 @@ export function BottomNav() {
         opacity: 1,
       }}
     >
-      <div className="relative mx-auto grid max-w-3xl grid-cols-5 items-end px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.35rem)] min-h-[88px]">
+      <div className="relative mx-auto grid max-w-3xl grid-cols-5 items-end px-1 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.2rem)] min-h-[76px]">
         <NavItem {...navItems[0]} />
         <NavItem {...navItems[1]} />
 
         <button
           onClick={handlePayment}
-          className="relative -top-3 flex flex-col items-center justify-end gap-1 -mt-8"
+          className="relative -top-2 flex flex-col items-center justify-end gap-0.5 -mt-6"
           aria-label="Payment"  
         >
-          <span className="relative flex h-[40px] w-[66px] items-start justify-center">
-            <span className="absolute inset-x-0 top-0 h-[40px] rounded-t-full border-2 border-b-0 border-[#11a6ff]" />
+          <span className="relative flex h-[34px] w-[56px] items-start justify-center">
+            <span className="absolute inset-x-0 top-0 h-[34px] rounded-t-full border-2 border-b-0 border-[#11a6ff]" />
             <svg
               viewBox="0 0 24 24"
-              className="relative top-[12px] h-6 w-6 text-white"
+              className="relative top-[9px] h-5 w-5 text-white"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.9"
@@ -61,40 +58,42 @@ export function BottomNav() {
               <path d="M4 14h16" />
             </svg>
           </span>
-          <span className="text-[11px] font-medium text-[var(--color-foreground)]">Payment</span>
+          <span className="text-[10px] font-medium text-[var(--color-foreground)]">Payment</span>
         </button>
 
         <NavItem {...navItems[2]} />
 
         <button
           onClick={handleMore}
-          className="flex h-[64px] flex-col items-center justify-center gap-1 text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
+          className="flex h-14 flex-col items-center justify-center gap-0.5 text-[var(--color-muted-foreground)] transition-colors hover:text-[var(--color-foreground)]"
           aria-label="More"
         >
-          <Menu className="h-5 w-5" />
-          <span className="text-[11px] font-medium">More</span>
+          <Menu className="h-[18px] w-[18px]" />
+          <span className="text-[10px] font-medium">More</span>
         </button>
       </div>
     </nav>
   )
 }
 
-function NavItem({ to, icon: Icon, label, end = false }) {
+function NavItem(item) {
+  const { to, label, end = false } = item
+
   return (
     <NavLink
       to={to}
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex h-[64px] flex-col items-center justify-center gap-1 transition-colors',
+          'flex h-14 flex-col items-center justify-center gap-0.5 transition-colors',
           isActive
             ? 'text-[var(--color-primary)]'
             : 'text-[var(--color-muted-foreground)]',
         )
       }
     >
-      <Icon className="h-5 w-5" strokeWidth={1.9} />
-      <span className="text-[11px] font-medium">{label}</span>
+      <item.icon className="h-[18px] w-[18px]" strokeWidth={1.9} />
+      <span className="text-[10px] font-medium">{label}</span>
     </NavLink>
   )
 }
