@@ -11,11 +11,13 @@ Before starting any task, read the relevant files in `.claude/`:
 - `.claude/desgin_guidelines.md` — visual/UX rules, color tokens, component patterns
 - `.claude/frontend_structure.md` — frontend architecture, data flow, conventions
 - `.claude/api.md` — API contract (endpoints, request/response shapes)
+- `.claude/backend_design.md` — backend architecture, conventions, route patterns
+- `.claude/mongodb.md` — MongoDB collections, indexes, query patterns
 - `.claude/tasks/00_index.md` — task status (done / skipped)
 
 ## Reference
 
-`.claude/` — design guidelines, frontend structure doc, API contract, tasks index.
+`.claude/` — design guidelines, frontend structure doc, API contract, backend design, MongoDB guidelines, tasks index.
 
 ## Dev commands
 
@@ -47,10 +49,14 @@ React 19 + Vite + Tailwind + shadcn + TanStack Query
 | `core/config.py` | Pydantic settings from `.env` |
 | `core/db.py` | Motor client, indexes, `get_db` dep |
 | `core/security.py` | `get_current_user()` by handle |
-| `api/routes/health.py` | `/api/v1/health` — only implemented route |
-| `models/` | Pydantic v2 request/response models (stubs) |
+| `api/routes/` | One file per resource (`health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity`) |
+| `models/` | Pydantic v2 request/response schemas |
+| `services/balances.py` | Net balance aggregation + debt simplification calls |
+| `services/simplify.py` | Greedy debt simplification (two max-heaps) |
+| `services/activity.py` | `append_activity()` — writes activity rows |
+| `services/seed.py` | Demo data; `--reset` drops collections |
 
-Routes (all `/api/v1`): only `health` is registered in `main.py`. Full route implementation (`users`, `groups`, `expenses`, `settlements`, `balances`, `activity`) is pending — frontend uses the mock layer (`lib/mock.js`) in the meantime.
+Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, `balances`, `activity` — all registered in `main.py`. Every mutation calls `append_activity()`.
 
 ## Frontend (`frontend/src/`)
 

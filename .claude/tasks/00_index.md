@@ -1,6 +1,12 @@
-# Frontend improvement tasks
+# TatraSplit tasks
 
 All previously planned tasks (01–10) are complete or intentionally skipped.
+
+## Pending
+- task-11: Remove card panel from Dashboard — `task-11-remove-card-panel.md`
+- task-12: Split buttons on payment rows — `task-12-payment-split-buttons.md`
+- task-13: Account switcher (demo) — `task-13-account-switcher.md`
+- task-14: DB management panel — `task-14-db-management.md`
 
 ## Done
 - task-01: env hardening
