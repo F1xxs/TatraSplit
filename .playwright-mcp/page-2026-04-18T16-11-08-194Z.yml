@@ -1,0 +1,36 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - link "Tatra banka" [ref=e7] [cursor=pointer]:
+      - /url: /
+      - img "Tatra banka" [ref=e8]
+  - main [ref=e9]:
+    - generic [ref=e10]:
+      - link "Back to group" [ref=e11] [cursor=pointer]:
+        - /url: /groups/g_roommates
+        - img [ref=e12]
+        - text: Back to group
+      - generic [ref=e14]:
+        - generic [ref=e15]: ⚡
+        - generic [ref=e16]:
+          - heading "Settle up" [level=1] [ref=e17]
+          - paragraph [ref=e18]: Minimum transfers to square everyone up
+  - navigation [ref=e23]:
+    - generic [ref=e24]:
+      - link "Home" [ref=e25] [cursor=pointer]:
+        - /url: /
+        - img [ref=e26]
+        - generic [ref=e29]: Home
+      - link "Transactions" [ref=e30] [cursor=pointer]:
+        - /url: /activity
+        - img [ref=e31]
+        - generic [ref=e34]: Transactions
+      - button "Payment" [ref=e35]:
+        - img [ref=e39]
+        - generic [ref=e42]: Payment
+      - link "Offers" [ref=e43] [cursor=pointer]:
+        - /url: /groups
+        - img [ref=e44]
+        - generic [ref=e48]: Offers
+      - button "More" [ref=e49]:
+        - img [ref=e50]
+        - generic [ref=e51]: More

@@ -1,0 +1,82 @@
+- generic [ref=e2]:
+  - generic [ref=e4]:
+    - banner [ref=e5]:
+      - generic [ref=e6]:
+        - link "Tatra banka" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Tatra banka" [ref=e8]
+        - generic [ref=e53]: MI
+    - main [ref=e9]:
+      - generic [ref=e10]:
+        - link "Back to Roommates" [ref=e54] [cursor=pointer]:
+          - /url: /groups/g_roommates
+          - img [ref=e12]
+          - text: Back to Roommates
+        - generic [ref=e14]:
+          - generic [ref=e15]: ⚡
+          - generic [ref=e16]:
+            - heading "Settle up" [level=1] [ref=e17]
+            - paragraph [ref=e18]: Minimum transfers to square everyone up
+        - generic [ref=e20]:
+          - generic [ref=e56]:
+            - generic [ref=e57]:
+              - generic [ref=e59]: NK
+              - generic [ref=e60]:
+                - generic [ref=e61]: owes
+                - generic [ref=e62]: Nina Kovac
+            - generic [ref=e63]:
+              - img [ref=e64]
+              - generic [ref=e66]: €279.15
+            - generic [ref=e67]:
+              - generic [ref=e69]: MI
+              - generic [ref=e70]:
+                - generic [ref=e71]: gets
+                - generic [ref=e72]: Misha
+            - button "Mark paid" [active] [ref=e73]:
+              - img [ref=e74]
+              - text: Mark paid
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - generic [ref=e80]: LN
+              - generic [ref=e81]:
+                - generic [ref=e82]: owes
+                - generic [ref=e83]: Lukas Novak
+            - generic [ref=e84]:
+              - img [ref=e85]
+              - generic [ref=e87]: €208.47
+            - generic [ref=e88]:
+              - generic [ref=e90]: MI
+              - generic [ref=e91]:
+                - generic [ref=e92]: gets
+                - generic [ref=e93]: Misha
+            - button "Mark paid" [ref=e94]:
+              - img [ref=e95]
+              - text: Mark paid
+    - navigation [ref=e23]:
+      - generic [ref=e24]:
+        - link "Home" [ref=e25] [cursor=pointer]:
+          - /url: /
+          - img [ref=e26]
+          - generic [ref=e29]: Home
+        - link "Transactions" [ref=e30] [cursor=pointer]:
+          - /url: /activity
+          - img [ref=e31]
+          - generic [ref=e34]: Transactions
+        - button "Payment" [ref=e35]:
+          - img [ref=e39]
+          - generic [ref=e42]: Payment
+        - link "Offers" [ref=e43] [cursor=pointer]:
+          - /url: /groups
+          - img [ref=e44]
+          - generic [ref=e48]: Offers
+        - button "More" [ref=e49]:
+          - img [ref=e50]
+          - generic [ref=e51]: More
+  - generic [ref=e97]:
+    - generic [ref=e98]:
+      - img [ref=e99]
+      - generic [ref=e101]:
+        - generic [ref=e102]: Not available in demo
+        - generic [ref=e103]: Real payments are disabled in this demo.
+    - button "Dismiss" [ref=e104]:
+      - img [ref=e105]

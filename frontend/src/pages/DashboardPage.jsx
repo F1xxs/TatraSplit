@@ -177,9 +177,7 @@ export function DashboardPage() {
             icon={CreditCard}
             label="Payment"
             onClick={() => {
-              const first = groups[0]
-              if (first) navigate(`/groups/${first._id || first.id}/expenses/new`)
-              else navigate('/groups/new')
+                  toast({ title: 'Feature not available in demo' })
             }}
           />
           <QuickAction icon={Building2} label="ATM" onClick={stub} />

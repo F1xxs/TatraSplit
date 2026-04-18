@@ -16,12 +16,7 @@ export function BottomNav() {
   const { toast } = useToast()
 
   function handlePayment() {
-    const first = groups?.[0]
-    if (first) {
-      navigate(`/groups/${first._id || first.id}/expenses/new`)
-      return
-    }
-    navigate('/groups/new')
+    toast({ title: 'Feature not available in demo' })
   }
 
   function handleMore() {
@@ -45,12 +40,11 @@ export function BottomNav() {
 
         <button
           onClick={handlePayment}
-          className="relative flex flex-col items-center justify-end gap-1 -mt-7"
-          aria-label="Payment"
+          className="relative -top-3 flex flex-col items-center justify-end gap-1 -mt-8"
+          aria-label="Payment"  
         >
-          <span className="relative flex h-[52px] w-[86px] items-start justify-center">
-            <span className="absolute inset-x-0 top-0 h-[52px] rounded-t-full border-2 border-b-0 border-[#11a6ff]" />
-            <span className="absolute inset-x-[2px] top-[2px] h-[48px] rounded-t-full border border-b-0 border-[#11a6ff]/35" />
+          <span className="relative flex h-[40px] w-[66px] items-start justify-center">
+            <span className="absolute inset-x-0 top-0 h-[40px] rounded-t-full border-2 border-b-0 border-[#11a6ff]" />
             <svg
               viewBox="0 0 24 24"
               className="relative top-[12px] h-6 w-6 text-white"

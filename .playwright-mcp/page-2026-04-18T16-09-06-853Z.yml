@@ -1,0 +1,32 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - link "Tatra banka" [ref=e7] [cursor=pointer]:
+      - /url: /
+      - img "Tatra banka" [ref=e8]
+  - main [ref=e9]:
+    - generic [ref=e11]:
+      - heading "Shared payments" [level=1] [ref=e12]
+      - link "New" [ref=e13] [cursor=pointer]:
+        - /url: /groups/new
+        - img [ref=e14]
+        - text: New
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "Home" [ref=e23] [cursor=pointer]:
+        - /url: /
+        - img [ref=e24]
+        - generic [ref=e27]: Home
+      - link "Transactions" [ref=e28] [cursor=pointer]:
+        - /url: /activity
+        - img [ref=e29]
+        - generic [ref=e32]: Transactions
+      - button "Payment" [ref=e33]:
+        - img [ref=e37]
+        - generic [ref=e40]: Payment
+      - link "Offers" [ref=e41] [cursor=pointer]:
+        - /url: /groups
+        - img [ref=e42]
+        - generic [ref=e46]: Offers
+      - button "More" [ref=e47]:
+        - img [ref=e48]
+        - generic [ref=e49]: More

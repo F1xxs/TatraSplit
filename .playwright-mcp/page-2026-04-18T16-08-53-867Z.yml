@@ -1,0 +1,77 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - button "Mail" [ref=e7]:
+        - img [ref=e8]
+      - link "Tatra banka" [ref=e11] [cursor=pointer]:
+        - /url: /
+        - img "Tatra banka" [ref=e12]
+      - button "Customise" [ref=e13]
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic [ref=e16]:
+        - heading "Accounts" [level=2] [ref=e17]
+        - generic [ref=e18]:
+          - generic [ref=e19]:
+            - generic [ref=e23]: SK18 1100 1111 1111 3294 5724
+            - generic [ref=e24]:
+              - generic [ref=e25]:
+                - generic [ref=e26]: Account balance
+                - generic [ref=e28]: Balance valid as of 18. 04. 2026 18:08
+              - img [ref=e30]
+            - generic [ref=e33]:
+              - button "Share IBAN" [ref=e34]:
+                - img [ref=e35]
+                - text: Share IBAN
+              - button "Request payment" [ref=e41]:
+                - img [ref=e42]
+                - text: Request payment
+          - generic [ref=e44]:
+            - button [disabled] [ref=e45]:
+              - img [ref=e46]
+            - generic [ref=e48]:
+              - button [ref=e49]
+              - button [ref=e50]
+            - button [ref=e51]:
+              - img [ref=e52]
+      - generic [ref=e55]:
+        - button "Transactions" [ref=e56]:
+          - img [ref=e58]
+          - generic [ref=e61]: Transactions
+        - button "Payment" [ref=e62]:
+          - img [ref=e64]
+          - generic [ref=e66]: Payment
+        - button "ATM" [ref=e67]:
+          - img [ref=e69]
+          - generic [ref=e73]: ATM
+        - button "Standing" [ref=e74]:
+          - img [ref=e76]
+          - generic [ref=e81]: Standing
+      - generic [ref=e83]:
+        - heading "Shared payments" [level=2] [ref=e84]
+        - link "All" [ref=e85] [cursor=pointer]:
+          - /url: /groups
+      - generic [ref=e90]:
+        - heading "Recent transactions" [level=2] [ref=e91]
+        - link "All" [ref=e92] [cursor=pointer]:
+          - /url: /activity
+  - navigation [ref=e98]:
+    - generic [ref=e99]:
+      - link "Home" [ref=e100] [cursor=pointer]:
+        - /url: /
+        - img [ref=e101]
+        - generic [ref=e104]: Home
+      - link "Transactions" [ref=e105] [cursor=pointer]:
+        - /url: /activity
+        - img [ref=e106]
+        - generic [ref=e109]: Transactions
+      - button "Payment" [ref=e110]:
+        - img [ref=e114]
+        - generic [ref=e117]: Payment
+      - link "Offers" [ref=e118] [cursor=pointer]:
+        - /url: /groups
+        - img [ref=e119]
+        - generic [ref=e123]: Offers
+      - button "More" [ref=e124]:
+        - img [ref=e125]
+        - generic [ref=e126]: More

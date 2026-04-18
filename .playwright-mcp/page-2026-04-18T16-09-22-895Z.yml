@@ -1,0 +1,145 @@
+- generic [ref=e4]:
+  - banner [ref=e5]:
+    - generic [ref=e6]:
+      - link "Tatra banka" [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Tatra banka" [ref=e8]
+      - generic [ref=e51]: MI
+  - main [ref=e9]:
+    - generic [ref=e74]:
+      - link "Shared payments" [ref=e75] [cursor=pointer]:
+        - /url: /groups
+        - img [ref=e76]
+        - text: Shared payments
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - img [ref=e81]: 🏠
+          - generic [ref=e82]:
+            - heading "Roommates" [level=1] [ref=e83]
+            - generic [ref=e84]:
+              - generic [ref=e86]:
+                - generic [ref=e88]: MI
+                - generic [ref=e90]: LN
+                - generic [ref=e92]: NK
+              - generic [ref=e93]: 3 members · EUR
+        - generic [ref=e94]:
+          - generic [ref=e95]: Your balance
+          - generic [ref=e96]: +€487.62
+      - generic [ref=e97]:
+        - button "Add expense" [ref=e98]:
+          - img [ref=e100]
+          - generic [ref=e101]: Add expense
+        - link "Settle up" [ref=e102] [cursor=pointer]:
+          - /url: /groups/g_roommates/settle
+          - img [ref=e104]
+          - generic [ref=e109]: Settle up
+        - button "Invite" [ref=e110]:
+          - img [ref=e112]
+          - generic [ref=e118]: Invite
+        - button "Members" [ref=e119]:
+          - img [ref=e121]
+          - generic [ref=e126]: Members
+      - generic [ref=e127]:
+        - generic [ref=e128]:
+          - button "Expenses" [ref=e129]
+          - button "Balances" [ref=e130]
+          - button "Activity" [ref=e131]
+        - generic [ref=e133]:
+          - generic [ref=e134]:
+            - generic [ref=e135]: 15 Apr 2026
+            - generic [ref=e137]:
+              - img "Groceries" [ref=e139]: 🛒
+              - generic [ref=e140]:
+                - generic [ref=e141]: Kaufland run
+                - generic [ref=e142]:
+                  - generic [ref=e143]: You paid
+                  - link "Rozdeliť" [ref=e144] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e145]:
+                - generic [ref=e146]: €56.80
+                - generic [ref=e147]: lent €37.86
+          - generic [ref=e148]:
+            - generic [ref=e149]: 11 Apr 2026
+            - generic [ref=e151]:
+              - img "Utilities" [ref=e153]: 💡
+              - generic [ref=e154]:
+                - generic [ref=e155]: Electricity
+                - generic [ref=e156]:
+                  - generic [ref=e157]: Nina Kovac paid
+                  - link "Rozdeliť" [ref=e158] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e159]:
+                - generic [ref=e160]: −€60.00
+                - generic [ref=e161]: owe €20.00
+          - generic [ref=e162]:
+            - generic [ref=e163]: 29 Mar 2026
+            - generic [ref=e165]:
+              - img "Other" [ref=e167]: ✨
+              - generic [ref=e168]:
+                - generic [ref=e169]: Cleaning supplies
+                - generic [ref=e170]:
+                  - generic [ref=e171]: Lukas Novak paid
+                  - link "Rozdeliť" [ref=e172] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e173]:
+                - generic [ref=e174]: −€12.50
+                - generic [ref=e175]: owe €4.17
+          - generic [ref=e176]:
+            - generic [ref=e177]: 24 Mar 2026
+            - generic [ref=e179]:
+              - img "Utilities" [ref=e181]: 💡
+              - generic [ref=e182]:
+                - generic [ref=e183]: Internet
+                - generic [ref=e184]:
+                  - generic [ref=e185]: Nina Kovac paid
+                  - link "Rozdeliť" [ref=e186] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e187]:
+                - generic [ref=e188]: −€29.99
+                - generic [ref=e189]: owe €10.00
+          - generic [ref=e190]:
+            - generic [ref=e191]: 21 Mar 2026
+            - generic [ref=e193]:
+              - img "Groceries" [ref=e195]: 🛒
+              - generic [ref=e196]:
+                - generic [ref=e197]: Groceries
+                - generic [ref=e198]:
+                  - generic [ref=e199]: Lukas Novak paid
+                  - link "Rozdeliť" [ref=e200] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e201]:
+                - generic [ref=e202]: −€48.20
+                - generic [ref=e203]: owe €16.07
+          - generic [ref=e204]:
+            - generic [ref=e205]: 19 Mar 2026
+            - generic [ref=e207]:
+              - img "Rent" [ref=e209]: 🏠
+              - generic [ref=e210]:
+                - generic [ref=e211]: Rent
+                - generic [ref=e212]:
+                  - generic [ref=e213]: You paid
+                  - link "Rozdeliť" [ref=e214] [cursor=pointer]:
+                    - /url: /groups/g_roommates/settle
+              - generic [ref=e215]:
+                - generic [ref=e216]: €900.00
+                - generic [ref=e217]: lent €600.00
+  - navigation [ref=e21]:
+    - generic [ref=e22]:
+      - link "Home" [ref=e23] [cursor=pointer]:
+        - /url: /
+        - img [ref=e24]
+        - generic [ref=e27]: Home
+      - link "Transactions" [ref=e28] [cursor=pointer]:
+        - /url: /activity
+        - img [ref=e29]
+        - generic [ref=e32]: Transactions
+      - button "Payment" [ref=e33]:
+        - img [ref=e37]
+        - generic [ref=e40]: Payment
+      - link "Offers" [ref=e41] [cursor=pointer]:
+        - /url: /groups
+        - img [ref=e42]
+        - generic [ref=e46]: Offers
+      - button "More" [ref=e47]:
+        - img [ref=e48]
+        - generic [ref=e49]: More
