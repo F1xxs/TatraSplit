@@ -42,6 +42,14 @@ export function useGroupActivity(id) {
   })
 }
 
+export function useGroupSettlements(id) {
+  return useQuery({
+    queryKey: qk.groupSettlements(id),
+    queryFn: async () => normalizeList((await api.get(`/groups/${id}/settlements`)).data),
+    enabled: !!id,
+  })
+}
+
 export function useActivity() {
   return useQuery({
     queryKey: qk.activity,

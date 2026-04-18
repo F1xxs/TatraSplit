@@ -17,14 +17,15 @@ const STUB_IBAN = 'SK18 1100 1111 1111 3294 5724'
 
 export function DashboardPage() {
   const { data: me, isLoading: meLoading } = useMe()
-  const { data: balances, isLoading: balLoading } = useMeBalances()
+  const { isLoading: balLoading } = useMeBalances()
   const { data: groups = [], isLoading: groupsLoading, error: groupsError, refetch: refetchGroups } = useGroups()
   const { data: activity = [], isLoading: actLoading, error: actError, refetch: refetchAct } = useActivity()
   const { toast } = useToast()
   const navigate = useNavigate()
   const [cardIdx, setCardIdx] = useState(0)
 
-  const netBalance = (balances?.total_owed_to_me_cents || 0) - (balances?.total_i_owe_cents || 0)
+  const walletBalance = me?.balance_cents ?? 0
+  const walletCurrency = me?.currency || 'EUR'
   const firstName = me?.display_name?.split(' ')[0] || ''
   const lastName = me?.display_name?.split(' ').slice(1).join(' ') || ''
 
@@ -73,11 +74,11 @@ export function DashboardPage() {
                   <div className="text-[11px] text-[var(--color-muted-foreground)] uppercase tracking-wide">
                     Account balance
                   </div>
-                  {balLoading ? (
+                  {(balLoading || meLoading) ? (
                     <Skeleton className="h-8 w-32 mt-1" />
                   ) : (
                     <div className="text-3xl font-bold tabular-nums mt-1">
-                      {formatMoney(Math.abs(netBalance), 'EUR')}
+                      {formatMoney(walletBalance, walletCurrency)}
                     </div>
                   )}
                 </div>
