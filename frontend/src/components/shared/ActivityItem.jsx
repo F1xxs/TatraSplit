@@ -2,6 +2,7 @@ import { format } from 'date-fns'
 import { Receipt, HandCoins, UserPlus, Users, Bell, Trash2 } from 'lucide-react'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useMe } from '@/hooks/useMe'
 
 const kindMeta = {
   'expense.created':    { icon: Receipt,   color: '#0070D2' },
@@ -12,25 +13,38 @@ const kindMeta = {
   'reminder.sent':      { icon: Bell,      color: '#F59E0B' },
 }
 
-function getTitle(item) {
+function getTitle(item, meId) {
   const actor = item.payload?.actor_name || 'Someone'
   switch (item.kind) {
     case 'expense.created':   return item.payload?.description || 'Expense'
     case 'expense.deleted':   return item.payload?.description || 'Expense deleted'
-    case 'settlement.created': return `Payment to ${item.payload?.to_name || 'someone'}`
+    case 'settlement.created': {
+      const fromName = item.payload?.from_name || 'someone'
+      const toName = item.payload?.to_name || 'someone'
+      if (item.payload?.to_user && meId && item.payload.to_user === meId) {
+        return `Received from ${fromName}`
+      }
+      if (item.payload?.from_user && meId && item.payload.from_user === meId) {
+        return `Payment to ${toName}`
+      }
+      return `${fromName} paid ${toName}`
+    }
     case 'group.created':     return item.payload?.group_name || 'New group'
     case 'member.joined':     return `${actor} joined`
     default: return item.kind
   }
 }
 
-function getSubtitle(item) {
+function getSubtitle(item, meId) {
   const group = item.payload?.group_name
   switch (item.kind) {
     case 'expense.created':
       return `${item.payload?.actor_name || 'Someone'} paid${group ? ` · ${group}` : ''}`
-    case 'settlement.created':
-      return `Payment sent${group ? ` · ${group}` : ''}`
+    case 'settlement.created': {
+      const isReceiver = item.payload?.to_user && meId && item.payload.to_user === meId
+      const label = isReceiver ? 'Payment received' : 'Payment sent'
+      return `${label}${group ? ` · ${group}` : ''}`
+    }
     case 'group.created':
       return 'Group created'
     case 'member.joined':
@@ -39,18 +53,31 @@ function getSubtitle(item) {
   }
 }
 
-function getAmount(item) {
+function getAmount(item, meId) {
   if (item.payload?.amount_cents == null) return null
   const amt = item.payload.amount_cents
   const currency = item.payload?.currency || 'EUR'
-  const isCredit = item.kind === 'settlement.created'
+  let isCredit = true
+  if (item.kind === 'settlement.created') {
+    if (item.payload?.from_user && meId && item.payload.from_user === meId) {
+      isCredit = false
+    } else if (item.payload?.to_user && meId && item.payload.to_user === meId) {
+      isCredit = true
+    } else {
+      isCredit = true
+    }
+  } else if (item.kind === 'expense.created') {
+    isCredit = false
+  }
   return { amt, currency, isCredit }
 }
 
 export function ActivityItem({ item, className }) {
+  const { data: me } = useMe()
+  const meId = me?.id
   const meta = kindMeta[item.kind] || kindMeta['expense.created']
   const Icon = meta.icon
-  const amount = getAmount(item)
+  const amount = getAmount(item, meId)
 
   return (
     <div className={cn('flex items-center gap-3 p-3', className)}>
@@ -61,9 +88,9 @@ export function ActivityItem({ item, className }) {
         <Icon className="h-5 w-5" style={{ color: meta.color }} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium truncate">{getTitle(item)}</div>
+        <div className="text-sm font-medium truncate">{getTitle(item, meId)}</div>
         <div className="text-xs text-[var(--color-muted-foreground)] truncate mt-0.5">
-          {getSubtitle(item)}
+          {getSubtitle(item, meId)}
         </div>
       </div>
       {amount && (
@@ -73,7 +100,7 @@ export function ActivityItem({ item, className }) {
             amount.isCredit ? 'text-[#1DB954]' : 'text-[#E84040]',
           )}
         >
-          {amount.isCredit ? '' : '−'}{formatMoney(amount.amt, amount.currency)}
+          {amount.isCredit ? '+' : '−'}{formatMoney(amount.amt, amount.currency)}
         </div>
       )}
     </div>
@@ -82,10 +109,12 @@ export function ActivityItem({ item, className }) {
 
 /* Bank-style transaction row used in Dashboard and ActivityPage */
 export function BankTransactionRow({ item, border, dateLabel }) {
+  const { data: me } = useMe()
+  const meId = me?.id
   const meta = kindMeta[item.kind] || kindMeta['expense.created']
   const Icon = meta.icon
   const ts = item.created_at ? new Date(item.created_at) : new Date()
-  const amount = getAmount(item)
+  const amount = getAmount(item, meId)
 
   return (
     <div>
@@ -107,9 +136,9 @@ export function BankTransactionRow({ item, border, dateLabel }) {
           <Icon className="h-5 w-5" style={{ color: meta.color }} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium truncate">{getTitle(item)}</div>
+          <div className="text-sm font-medium truncate">{getTitle(item, meId)}</div>
           <div className="text-xs text-[var(--color-muted-foreground)] truncate mt-0.5">
-            {getSubtitle(item)}
+            {getSubtitle(item, meId)}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -120,7 +149,7 @@ export function BankTransactionRow({ item, border, dateLabel }) {
                 amount.isCredit ? 'text-[#1DB954]' : 'text-[#E84040]',
               )}
             >
-              {amount.isCredit ? '' : '−'}{formatMoney(amount.amt, amount.currency)}
+              {amount.isCredit ? '+' : '−'}{formatMoney(amount.amt, amount.currency)}
             </div>
           )}
           <div className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
