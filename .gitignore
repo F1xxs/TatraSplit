@@ -53,3 +53,6 @@ pnpm-debug.log*
 .env.*
 !.env.example
 *.local
+
+# ── Project specific
+
