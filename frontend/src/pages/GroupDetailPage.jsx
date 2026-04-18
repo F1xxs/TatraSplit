@@ -39,7 +39,6 @@ import {
   useCreateRecurring,
   useUpdateRecurring,
   useDeleteRecurring,
-  useProcessRecurring,
 } from '@/hooks/useRecurring'
 import { useAddContact, useContacts, useUserSearch } from '@/hooks/useContacts'
 import { formatMoney, CATEGORIES } from '@/lib/format'
@@ -64,7 +63,6 @@ export function GroupDetailPage() {
   const createRecurring = useCreateRecurring(id)
   const updateRecurring = useUpdateRecurring(id)
   const deleteRecurring = useDeleteRecurring(id)
-  const processRecurring = useProcessRecurring()
 
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invite, setInvite] = useState(null)
@@ -339,22 +337,10 @@ export function GroupDetailPage() {
         <TabsContent value="recurring" className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-semibold">Recurring expenses</span>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => processRecurring.mutate()}
-                disabled={processRecurring.isPending}
-                className="gap-1.5 text-xs"
-              >
-                <RefreshCw className={cn('h-3.5 w-3.5', processRecurring.isPending && 'animate-spin')} />
-                Process due
-              </Button>
-              <Button size="sm" onClick={() => setAddRecurringOpen(true)} className="gap-1.5 text-xs">
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </Button>
-            </div>
+            <Button size="sm" onClick={() => setAddRecurringOpen(true)} className="gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" />
+              Add
+            </Button>
           </div>
 
           {recLoading ? (
@@ -521,7 +507,7 @@ export function GroupDetailPage() {
 
 
       <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[92vh] h-[85vh] overflow-y-auto pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
           <SheetHeader className="mb-4">
             <SheetTitle>Members · {members.length}</SheetTitle>
           </SheetHeader>
