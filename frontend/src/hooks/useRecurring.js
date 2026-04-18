@@ -28,6 +28,15 @@ export function useDeleteRecurring(groupId) {
   })
 }
 
+export function useUpdateRecurring(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ recurringId, ...body }) =>
+      (await api.patch(`/groups/${groupId}/recurring/${recurringId}`, body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.groupRecurring(groupId) }),
+  })
+}
+
 export function useProcessRecurring() {
   return useMutation({
     mutationFn: async () => (await api.post('/admin/process-recurring')).data,

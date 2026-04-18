@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, CreditCard } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, CreditCard, Check, Pencil, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,7 +27,7 @@ import { DataState } from '@/components/shared/DataState'
 import { QRInviteDialog } from '@/components/shared/QRInviteDialog'
 import { AddExpenseSheet } from './AddExpensePage'
 import { useMe } from '@/hooks/useMe'
-import { useDeleteGroup } from '@/hooks/useMutations'
+import { useDeleteGroup, useAddGroupMember } from '@/hooks/useMutations'
 import {
   useGroup,
   useGroupExpenses,
@@ -37,9 +37,11 @@ import {
 import {
   useGroupRecurring,
   useCreateRecurring,
+  useUpdateRecurring,
   useDeleteRecurring,
   useProcessRecurring,
 } from '@/hooks/useRecurring'
+import { useAddContact, useContacts, useUserSearch } from '@/hooks/useContacts'
 import { formatMoney, CATEGORIES } from '@/lib/format'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -53,10 +55,14 @@ export function GroupDetailPage() {
   const { data: activity = [], isLoading: actLoading, error: actError, refetch: refetchAct } = useGroupActivity(id)
   const { data: me } = useMe()
   const deleteGroup = useDeleteGroup(id)
+  const addGroupMember = useAddGroupMember(id)
+  const { data: contacts = [] } = useContacts()
+  const addContact = useAddContact()
   const { toast } = useToast()
 
   const { data: recurring = [], isLoading: recLoading } = useGroupRecurring(id)
   const createRecurring = useCreateRecurring(id)
+  const updateRecurring = useUpdateRecurring(id)
   const deleteRecurring = useDeleteRecurring(id)
   const processRecurring = useProcessRecurring()
 
@@ -67,6 +73,11 @@ export function GroupDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [addRecurringOpen, setAddRecurringOpen] = useState(false)
+  const [editingRecurring, setEditingRecurring] = useState(null)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberBusyId, setMemberBusyId] = useState(null)
+
+  const { data: memberSearchResults = [], isLoading: membersSearching } = useUserSearch(memberSearch)
 
   const openInvite = async () => {
     try {
@@ -87,6 +98,11 @@ export function GroupDetailPage() {
   const hasUnsettledBalances = unsettledCents > 0
 
   const categoryData = aggregateByCategory(expenses)
+  const groupMemberIds = new Set(members.map((m) => m.id))
+  const contactsNotInGroup = contacts
+    .filter((c) => c.user && !groupMemberIds.has(c.contact_user_id))
+    .map((c) => c.user)
+  const contactIdSet = new Set(contacts.map((c) => c.contact_user_id))
 
   const openDeleteDialog = () => {
     setDeleteError('')
@@ -111,6 +127,33 @@ export function GroupDetailPage() {
     }
   }
 
+  const addUserToGroup = async (user) => {
+    setMemberBusyId(user.id)
+    try {
+      await addGroupMember.mutateAsync(user.id)
+      toast({ variant: 'success', title: `${user.display_name} added to group` })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not add member', description: err.message })
+    } finally {
+      setMemberBusyId(null)
+    }
+  }
+
+  const addUserToContactsAndGroup = async (user) => {
+    setMemberBusyId(user.id)
+    try {
+      if (!contactIdSet.has(user.id)) {
+        await addContact.mutateAsync({ user_id: user.id })
+      }
+      await addGroupMember.mutateAsync(user.id)
+      toast({ variant: 'success', title: `${user.display_name} added to contacts and group` })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not add member', description: err.message })
+    } finally {
+      setMemberBusyId(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Link
@@ -118,7 +161,7 @@ export function GroupDetailPage() {
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Shared payments
+        Groups
       </Link>
 
       {/* Account-detail style header card */}
@@ -316,7 +359,7 @@ export function GroupDetailPage() {
 
           {recLoading ? (
             <div className="space-y-2">
-              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
+              {[1, 2].map(i => <div key={i} className="h-20 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
             </div>
           ) : recurring.length === 0 ? (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-center py-12">
@@ -326,26 +369,75 @@ export function GroupDetailPage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-              {recurring.map((r, i) => (
-                <div key={r.id} className={cn('flex items-center gap-3 px-4 py-3.5', i > 0 && 'border-t border-[var(--color-border)]')}>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{r.title}</div>
-                    <div className="text-xs text-[var(--color-muted-foreground)]">
-                      {FREQ_LABEL[r.frequency] || r.frequency} · next {new Date(r.next_due).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              {recurring.map((r, i) => {
+                const currency = r.currency || group?.currency || 'EUR'
+                const myShare = r.custom_split?.find(s => s.user_id === me?.id)?.share_cents
+                const payer = members.find(m => m.id === r.paid_by)
+                const isPayer = r.paid_by === me?.id
+                return (
+                  <div key={r.id} className={cn('px-4 py-3.5', i > 0 && 'border-t border-[var(--color-border)]')}>
+                    <div className="flex items-start gap-3">
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{r.title}</div>
+                        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full bg-[var(--color-secondary)] px-2 py-0.5 text-[11px] font-medium">
+                            {FREQ_LABEL[r.frequency] || r.frequency}
+                          </span>
+                          <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                            next {new Date(r.next_due).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          </span>
+                        </div>
+                        {payer && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <div
+                              className="h-4 w-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                              style={{ background: payer.color || '#0070D2' }}
+                            >
+                              {payer.display_name?.[0]}
+                            </div>
+                            <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                              Paid by <span className="font-medium text-[var(--color-foreground)]">{payer.display_name}</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Amounts + actions */}
+                      <div className="shrink-0 text-right flex flex-col items-end gap-1">
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatMoney(r.amount_cents, currency)}
+                        </div>
+                        {myShare != null && (
+                          <div className="text-[11px] text-[var(--color-muted-foreground)] tabular-nums">
+                            Your share: <span className="font-medium text-[var(--color-foreground)]">{formatMoney(myShare, currency)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          {isPayer && (
+                            <button
+                              onClick={() => setEditingRecurring(r)}
+                              className="text-[var(--color-primary)] hover:opacity-70 transition-opacity"
+                              aria-label="Edit recurring expense"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {(isPayer || r.created_by === me?.id) && (
+                            <button
+                              onClick={() => deleteRecurring.mutate(r.id)}
+                              className="text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors"
+                              aria-label="Delete recurring expense"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">
-                    {formatMoney(r.amount_cents, r.currency || group?.currency || 'EUR')}
-                  </div>
-                  <button
-                    onClick={() => deleteRecurring.mutate(r.id)}
-                    className="ml-1 text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors"
-                    aria-label="Delete recurring expense"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </TabsContent>
@@ -416,15 +508,122 @@ export function GroupDetailPage() {
         open={addRecurringOpen}
         onOpenChange={setAddRecurringOpen}
         group={group}
-        me={me}
         onCreate={createRecurring}
       />
+
+      <AddRecurringSheet
+        open={!!editingRecurring}
+        onOpenChange={(o) => { if (!o) setEditingRecurring(null) }}
+        group={group}
+        initial={editingRecurring}
+        onUpdate={(data) => updateRecurring.mutateAsync({ recurringId: editingRecurring.id, ...data })}
+      />
+
 
       <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle>Members · {members.length}</SheetTitle>
           </SheetHeader>
+          <div className="mb-4 space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
+            <div className="text-sm font-medium">Add members</div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs text-[var(--color-muted-foreground)]">From your contacts</div>
+                <Link to="/contacts" className="text-xs text-[var(--color-primary)] font-medium">
+                  Manage contacts
+                </Link>
+              </div>
+
+              {contacts.length === 0 ? (
+                <div className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-muted-foreground)]">
+                  No contacts yet. Add some contacts first, then add them to this group.
+                </div>
+              ) : contactsNotInGroup.length === 0 ? (
+                <div className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-xs text-[var(--color-muted-foreground)]">
+                  All your contacts are already in this group.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {contactsNotInGroup.map((u) => (
+                    <div key={u.id} className="flex items-center gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2">
+                      <Avatar name={u.display_name} color={u.color} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{u.display_name}</div>
+                        <div className="text-xs text-[var(--color-muted-foreground)] truncate">{u.handle}</div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => addUserToGroup(u)}
+                        disabled={memberBusyId === u.id}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-xs text-[var(--color-muted-foreground)]">Search users</div>
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
+                <Input
+                  value={memberSearch}
+                  onChange={(e) => setMemberSearch(e.target.value)}
+                  placeholder="Search by handle or name"
+                  className="pl-9"
+                />
+              </div>
+
+              {memberSearch.trim().length > 0 && (
+                <div className="rounded-lg border border-[var(--color-border)] overflow-hidden">
+                  {membersSearching ? (
+                    <div className="px-3 py-2 text-sm text-[var(--color-muted-foreground)]">Searching…</div>
+                  ) : (
+                    memberSearchResults
+                      .filter((u) => u.id !== me?.id)
+                      .map((u, i) => {
+                        const inGroup = groupMemberIds.has(u.id)
+                        const isContact = contactIdSet.has(u.id)
+                        return (
+                          <div key={u.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                            <div className="flex items-center gap-3 px-3 py-2">
+                              <Avatar name={u.display_name} color={u.color} size="sm" />
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium truncate">{u.display_name}</div>
+                                <div className="text-xs text-[var(--color-muted-foreground)] truncate">{u.handle}</div>
+                              </div>
+                              {inGroup ? (
+                                <Button size="sm" variant="secondary" disabled>
+                                  Added
+                                </Button>
+                              ) : isContact ? (
+                                <Button size="sm" onClick={() => addUserToGroup(u)} disabled={memberBusyId === u.id}>
+                                  Add to group
+                                </Button>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => addUserToContactsAndGroup(u)}
+                                  disabled={memberBusyId === u.id}
+                                  className="gap-1.5"
+                                >
+                                  <UserPlus className="h-3.5 w-3.5" />
+                                  Add contact + group
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="space-y-1">
             {members.map((m) => {
               const uid = m.id
@@ -541,11 +740,12 @@ function aggregateByCategory(expenses) {
 
 const FREQ_LABEL = { weekly: 'Weekly', biweekly: 'Bi-weekly', monthly: 'Monthly' }
 
-function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
+function AddRecurringSheet({ open, onOpenChange, group, initial = null, onCreate, onUpdate }) {
   const { data: me } = useMe()
   const members = group?.members || []
   const currency = group?.currency || 'EUR'
   const { toast } = useToast()
+  const isEdit = !!initial
 
   const [amount, setAmount] = useState(0)
   const [title, setTitle] = useState('')
@@ -555,14 +755,21 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
   const [frequency, setFrequency] = useState('monthly')
 
   useEffect(() => {
-    if (!open) {
+    if (open && initial) {
+      setAmount(initial.amount_cents || 0)
+      setTitle(initial.title || '')
+      setCategory(initial.category || 'home')
+      setFrequency(initial.frequency || 'monthly')
+      setSplitType(initial.split_type || 'equal')
+      setSplit(initial.custom_split || [])
+    } else if (!open) {
       setAmount(0); setTitle(''); setCategory('home')
       setSplitType('equal'); setSplit([]); setFrequency('monthly')
     }
-  }, [open])
+  }, [open, initial])
 
   useEffect(() => {
-    if (open && splitType === 'equal' && members.length && amount > 0) {
+    if (open && !initial && splitType === 'equal' && members.length && amount > 0) {
       setSplit(distributeEqual(amount, members.map((m) => m.id)))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -577,29 +784,37 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
     return true
   }, [amount, title, me, split, splitType])
 
+  const isPending = isEdit ? onUpdate?.isPending : onCreate?.isPending
+
   const submit = async () => {
+    const payload = {
+      title: title.trim(),
+      amount_cents: amount,
+      currency,
+      category,
+      paid_by: me.id,
+      split_type: 'custom',
+      custom_split: split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })),
+      frequency,
+    }
     try {
-      await onCreate.mutateAsync({
-        title: title.trim(),
-        amount_cents: amount,
-        currency,
-        category,
-        paid_by: me.id,
-        split_type: 'custom',
-        custom_split: split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })),
-        frequency,
-      })
-      toast({ variant: 'success', title: 'Recurring expense added' })
+      if (isEdit) {
+        await onUpdate(payload)
+        toast({ variant: 'success', title: 'Recurring expense updated' })
+      } else {
+        await onCreate.mutateAsync(payload)
+        toast({ variant: 'success', title: 'Recurring expense added' })
+      }
       onOpenChange(false)
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add recurring expense', description: err.message })
+      toast({ variant: 'error', title: isEdit ? 'Could not update' : 'Could not add', description: err.message })
     }
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} side="right">
       <SheetHeader>
-        <SheetTitle>Add recurring expense</SheetTitle>
+        <SheetTitle>{isEdit ? 'Edit recurring expense' : 'Add recurring expense'}</SheetTitle>
         <SheetDescription>{group ? `Repeating in ${group.name}` : ''}</SheetDescription>
       </SheetHeader>
 
@@ -683,8 +898,8 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
 
       <SheetFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button onClick={submit} disabled={!canSubmit || onCreate.isPending}>
-          {onCreate.isPending ? 'Saving…' : 'Confirm'}
+        <Button onClick={submit} disabled={!canSubmit || isPending}>
+          {isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Confirm'}
         </Button>
       </SheetFooter>
     </Sheet>

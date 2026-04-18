@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, CheckCircle2, Loader2, Search, Send, SplitSquareHorizontal } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -250,13 +250,14 @@ export function PaymentPage() {
 
   return (
     <div className="space-y-4">
-      <Link
-        to="/"
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-(--color-foreground)"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
-      </Link>
+      </button>
 
       {/* ── FORM step ──────────────────────────────────────────────────────── */}
       {step === 'form' && (
