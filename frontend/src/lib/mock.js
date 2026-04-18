@@ -5,15 +5,8 @@
 const nowIso = () => new Date().toISOString()
 const daysAgo = (n) => new Date(Date.now() - n * 86400 * 1000).toISOString()
 
-const me = {
-  id: 'u_misha',
-  display_name: 'Misha',
-  handle: '@misha',
-  color: 'hsl(210 90% 62%)',
-}
-
 const users = [
-  me,
+  { id: 'u_misha', display_name: 'Misha', handle: '@misha', color: 'hsl(210 90% 62%)' },
   { id: 'u_lukas', display_name: 'Lukas Novak',  handle: '@lukas', color: 'hsl(199 89% 65%)' },
   { id: 'u_nina',  display_name: 'Nina Kovac',   handle: '@nina',  color: 'hsl(340 82% 65%)' },
   { id: 'u_tomas', display_name: 'Tomas Horvat', handle: '@tomas', color: 'hsl(142 72% 55%)' },
@@ -21,6 +14,15 @@ const users = [
 
 const byId = Object.fromEntries(users.map((u) => [u.id, u]))
 const byHandle = Object.fromEntries(users.map((u) => [u.handle, u]))
+
+const mockUserSelector = import.meta.env.VITE_MOCK_USER
+const me = (() => {
+  if (!mockUserSelector) return byId['u_misha']
+  if (byId[mockUserSelector]) return byId[mockUserSelector]
+  if (byHandle[mockUserSelector]) return byHandle[mockUserSelector]
+  console.warn(`Unknown VITE_MOCK_USER '${mockUserSelector}', defaulting to u_misha`)
+  return byId['u_misha']
+})()
 
 const uid = (prefix) =>
   `${prefix}_${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-4)}`

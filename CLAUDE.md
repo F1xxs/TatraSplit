@@ -2,10 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Reference docs
+## Reference dir
 
-- Design guidelines: `.claude/DESIGN_GUIDELINES.md`
-- Project plan: `.claude/plan.md`
+.claude
 
 ## Project
 
@@ -60,6 +59,8 @@ Backend (FastAPI + Motor async driver)   http://localhost:8000/api/v1
         ↓
 MongoDB Atlas  —  database: tatra_split
 ```
+
+
 
 ### Backend (`backend/app/`)
 

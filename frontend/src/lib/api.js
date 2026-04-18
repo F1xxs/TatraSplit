@@ -1,5 +1,5 @@
-import axios from 'axios'
 import { handleMock } from '@/lib/mock'
+import axios from 'axios'
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1'
 const useMock = import.meta.env.VITE_USE_MOCK !== 'false'
