@@ -82,7 +82,7 @@ export function SettleUpPage() {
           {youOwe.length > 0 && (
             <Section label="You owe" labelColor="text-[#E84040]">
               {youOwe.map((t, idx) => (
-                <Row key={idx} first={idx === 0}>
+                <Row key={idx}>
                   <TransferCard
                     from={byId(t.from_user)}
                     to={byId(t.to_user)}
@@ -100,9 +100,9 @@ export function SettleUpPage() {
           )}
 
           {youAreOwed.length > 0 && (
-            <Section label="You are owed" labelColor="text-[#1DB954]">
+            <Section label="You are owed" labelColor="text-muted-foreground">
               {youAreOwed.map((t, idx) => (
-                <Row key={idx} first={idx === 0}>
+                <Row key={idx}>
                   <TransferCard
                     from={byId(t.from_user)}
                     to={byId(t.to_user)}
@@ -120,7 +120,7 @@ export function SettleUpPage() {
           {others.length > 0 && (
             <Section label="Other transfers" labelColor="text-muted-foreground">
               {others.map((t, idx) => (
-                <Row key={idx} first={idx === 0}>
+                <Row key={idx}>
                   <OtherRow
                     from={byId(t.from_user)}
                     to={byId(t.to_user)}
@@ -143,16 +143,14 @@ function Section({ label, labelColor, children }) {
       <h2 className={cn('text-xs font-semibold uppercase tracking-widest px-1', labelColor)}>
         {label}
       </h2>
-      <div className="rounded-2xl border border-(--color-border) bg-(--color-card) overflow-hidden">
-        {children}
-      </div>
+      <div className="space-y-2">{children}</div>
     </section>
   )
 }
 
-function Row({ first, children }) {
+function Row({ children }) {
   return (
-    <div className={first ? '' : 'border-t border-(--color-border)'}>
+    <div className="rounded-2xl border border-(--color-border) bg-(--color-card) shadow-[0_8px_22px_rgba(0,0,0,0.25)]">
       {children}
     </div>
   )
@@ -192,7 +190,7 @@ function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid
           disabled={isPending}
           className={cn(
             'flex-1 flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-            'bg-(--color-muted)/40 text-(--color-foreground) hover:bg-(--color-muted)/60 disabled:opacity-50',
+            'bg-[#0a74b8] text-white hover:bg-[#0969a6] disabled:opacity-50',
           )}
         >
           <Check className="h-4 w-4" />
@@ -203,7 +201,7 @@ function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid
             onClick={onPay}
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-              'bg-(--color-primary) text-primary-foreground hover:bg-(--color-primary)/90',
+              'border border-[#0a74b8]/45 bg-[#0a74b8]/14 text-[#45a5e6] hover:bg-[#0a74b8]/22',
             )}
           >
             <Zap className="h-4 w-4" />
