@@ -98,6 +98,7 @@ export function usePayment() {
             emoji: '💸',
             currency,
             member_handles: [to_handle],
+            is_direct: true,
           })).data
           targetGroupId = extractId(created)
         }

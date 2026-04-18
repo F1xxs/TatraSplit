@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, Check, Search, UserPlus } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, Check, Pencil, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -37,6 +37,7 @@ import {
 import {
   useGroupRecurring,
   useCreateRecurring,
+  useUpdateRecurring,
   useDeleteRecurring,
   useProcessRecurring,
 } from '@/hooks/useRecurring'
@@ -61,6 +62,7 @@ export function GroupDetailPage() {
 
   const { data: recurring = [], isLoading: recLoading } = useGroupRecurring(id)
   const createRecurring = useCreateRecurring(id)
+  const updateRecurring = useUpdateRecurring(id)
   const deleteRecurring = useDeleteRecurring(id)
   const processRecurring = useProcessRecurring()
 
@@ -71,6 +73,7 @@ export function GroupDetailPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [addRecurringOpen, setAddRecurringOpen] = useState(false)
+  const [editingRecurring, setEditingRecurring] = useState(null)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberBusyId, setMemberBusyId] = useState(null)
 
@@ -355,7 +358,7 @@ export function GroupDetailPage() {
 
           {recLoading ? (
             <div className="space-y-2">
-              {[1, 2].map(i => <div key={i} className="h-16 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
+              {[1, 2].map(i => <div key={i} className="h-20 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
             </div>
           ) : recurring.length === 0 ? (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-center py-12">
@@ -365,26 +368,75 @@ export function GroupDetailPage() {
             </div>
           ) : (
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-              {recurring.map((r, i) => (
-                <div key={r.id} className={cn('flex items-center gap-3 px-4 py-3.5', i > 0 && 'border-t border-[var(--color-border)]')}>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{r.title}</div>
-                    <div className="text-xs text-[var(--color-muted-foreground)]">
-                      {FREQ_LABEL[r.frequency] || r.frequency} · next {new Date(r.next_due).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+              {recurring.map((r, i) => {
+                const currency = r.currency || group?.currency || 'EUR'
+                const myShare = r.custom_split?.find(s => s.user_id === me?.id)?.share_cents
+                const payer = members.find(m => m.id === r.paid_by)
+                const isPayer = r.paid_by === me?.id
+                return (
+                  <div key={r.id} className={cn('px-4 py-3.5', i > 0 && 'border-t border-[var(--color-border)]')}>
+                    <div className="flex items-start gap-3">
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold truncate">{r.title}</div>
+                        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center rounded-full bg-[var(--color-secondary)] px-2 py-0.5 text-[11px] font-medium">
+                            {FREQ_LABEL[r.frequency] || r.frequency}
+                          </span>
+                          <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                            next {new Date(r.next_due).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                          </span>
+                        </div>
+                        {payer && (
+                          <div className="mt-1.5 flex items-center gap-1.5">
+                            <div
+                              className="h-4 w-4 rounded-full shrink-0 flex items-center justify-center text-[9px] font-bold text-white"
+                              style={{ background: payer.color || '#0070D2' }}
+                            >
+                              {payer.display_name?.[0]}
+                            </div>
+                            <span className="text-[11px] text-[var(--color-muted-foreground)]">
+                              Paid by <span className="font-medium text-[var(--color-foreground)]">{payer.display_name}</span>
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Amounts + actions */}
+                      <div className="shrink-0 text-right flex flex-col items-end gap-1">
+                        <div className="text-sm font-semibold tabular-nums">
+                          {formatMoney(r.amount_cents, currency)}
+                        </div>
+                        {myShare != null && (
+                          <div className="text-[11px] text-[var(--color-muted-foreground)] tabular-nums">
+                            Your share: <span className="font-medium text-[var(--color-foreground)]">{formatMoney(myShare, currency)}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                          {isPayer && (
+                            <button
+                              onClick={() => setEditingRecurring(r)}
+                              className="text-[var(--color-primary)] hover:opacity-70 transition-opacity"
+                              aria-label="Edit recurring expense"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {(isPayer || r.created_by === me?.id) && (
+                            <button
+                              onClick={() => deleteRecurring.mutate(r.id)}
+                              className="text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors"
+                              aria-label="Delete recurring expense"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="text-sm font-semibold tabular-nums">
-                    {formatMoney(r.amount_cents, r.currency || group?.currency || 'EUR')}
-                  </div>
-                  <button
-                    onClick={() => deleteRecurring.mutate(r.id)}
-                    className="ml-1 text-[var(--color-muted-foreground)] hover:text-red-500 transition-colors"
-                    aria-label="Delete recurring expense"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </TabsContent>
@@ -455,16 +507,15 @@ export function GroupDetailPage() {
         open={addRecurringOpen}
         onOpenChange={setAddRecurringOpen}
         group={group}
-        me={me}
         onCreate={createRecurring}
       />
 
       <AddRecurringSheet
-        open={addRecurringOpen}
-        onOpenChange={setAddRecurringOpen}
+        open={!!editingRecurring}
+        onOpenChange={(o) => { if (!o) setEditingRecurring(null) }}
         group={group}
-        me={me}
-        onCreate={createRecurring}
+        initial={editingRecurring}
+        onUpdate={(data) => updateRecurring.mutateAsync({ recurringId: editingRecurring.id, ...data })}
       />
 
       <Sheet open={membersOpen} onOpenChange={setMembersOpen}>
@@ -687,70 +738,81 @@ function aggregateByCategory(expenses) {
 
 const FREQ_LABEL = { weekly: 'Weekly', biweekly: 'Bi-weekly', monthly: 'Monthly' }
 
-function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
+function AddRecurringSheet({ open, onOpenChange, group, initial = null, onCreate, onUpdate }) {
   const { data: me } = useMe()
   const members = group?.members || []
   const currency = group?.currency || 'EUR'
   const { toast } = useToast()
+  const isEdit = !!initial
 
   const [amount, setAmount] = useState(0)
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('home')
-  const [paidBy, setPaidBy] = useState(null)
   const [splitType, setSplitType] = useState('equal')
   const [split, setSplit] = useState([])
   const [frequency, setFrequency] = useState('monthly')
 
   useEffect(() => {
-    if (!open) {
+    if (open && initial) {
+      setAmount(initial.amount_cents || 0)
+      setTitle(initial.title || '')
+      setCategory(initial.category || 'home')
+      setFrequency(initial.frequency || 'monthly')
+      setSplitType(initial.split_type || 'equal')
+      setSplit(initial.custom_split || [])
+    } else if (!open) {
       setAmount(0); setTitle(''); setCategory('home')
-      setPaidBy(null); setSplitType('equal'); setSplit([]); setFrequency('monthly')
+      setSplitType('equal'); setSplit([]); setFrequency('monthly')
     }
-  }, [open])
+  }, [open, initial])
 
   useEffect(() => {
-    if (open && paidBy == null && me) setPaidBy(me.id)
-  }, [open, me, paidBy])
-
-  useEffect(() => {
-    if (open && splitType === 'equal' && members.length && amount > 0) {
+    if (open && !initial && splitType === 'equal' && members.length && amount > 0) {
       setSplit(distributeEqual(amount, members.map((m) => m.id)))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, splitType, amount, members.length])
 
   const canSubmit = useMemo(() => {
-    if (amount <= 0 || !title.trim() || !paidBy || !split.length) return false
+    if (amount <= 0 || !title.trim() || !me?.id || !split.length) return false
     if (splitType === 'custom') {
       const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
       if (sum !== amount) return false
     }
     return true
-  }, [amount, title, paidBy, split, splitType])
+  }, [amount, title, me, split, splitType])
+
+  const isPending = isEdit ? onUpdate?.isPending : onCreate?.isPending
 
   const submit = async () => {
+    const payload = {
+      title: title.trim(),
+      amount_cents: amount,
+      currency,
+      category,
+      paid_by: me.id,
+      split_type: 'custom',
+      custom_split: split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })),
+      frequency,
+    }
     try {
-      await onCreate.mutateAsync({
-        title: title.trim(),
-        amount_cents: amount,
-        currency,
-        category,
-        paid_by: paidBy,
-        split_type: splitType,
-        custom_split: splitType === 'custom' ? split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })) : [],
-        frequency,
-      })
-      toast({ variant: 'success', title: 'Recurring expense added' })
+      if (isEdit) {
+        await onUpdate(payload)
+        toast({ variant: 'success', title: 'Recurring expense updated' })
+      } else {
+        await onCreate.mutateAsync(payload)
+        toast({ variant: 'success', title: 'Recurring expense added' })
+      }
       onOpenChange(false)
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add recurring expense', description: err.message })
+      toast({ variant: 'error', title: isEdit ? 'Could not update' : 'Could not add', description: err.message })
     }
   }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange} side="right">
       <SheetHeader>
-        <SheetTitle>Add recurring expense</SheetTitle>
+        <SheetTitle>{isEdit ? 'Edit recurring expense' : 'Add recurring expense'}</SheetTitle>
         <SheetDescription>{group ? `Repeating in ${group.name}` : ''}</SheetDescription>
       </SheetHeader>
 
@@ -815,33 +877,6 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
           </div>
         </div>
 
-        {/* Paid by */}
-        <div>
-          <Label>Paid by</Label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {members.map((m) => {
-              const active = paidBy === m.id
-              return (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPaidBy(m.id)}
-                  className={cn(
-                    'flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-all',
-                    active
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15'
-                      : 'border-[var(--color-border)] hover:bg-[var(--color-secondary)]',
-                  )}
-                >
-                  <Avatar name={m.display_name} color={m.color} size="xs" />
-                  <span>{m.display_name}</span>
-                  {active && <Check className="h-3.5 w-3.5 text-[var(--color-primary)]" />}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
         {/* Split */}
         <div>
           <Label>Split between</Label>
@@ -861,8 +896,8 @@ function AddRecurringSheet({ open, onOpenChange, group, onCreate }) {
 
       <SheetFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-        <Button onClick={submit} disabled={!canSubmit || onCreate.isPending}>
-          {onCreate.isPending ? 'Saving…' : 'Confirm'}
+        <Button onClick={submit} disabled={!canSubmit || isPending}>
+          {isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Confirm'}
         </Button>
       </SheetFooter>
     </Sheet>
