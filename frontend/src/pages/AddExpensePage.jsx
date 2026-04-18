@@ -207,7 +207,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
           Cancel
         </Button>
         <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
-          {addExpense.isPending ? 'Saving…' : 'Add expense'}
+          {addExpense.isPending ? 'Saving…' : 'Confirm'}
         </Button>
       </SheetFooter>
     </Sheet>

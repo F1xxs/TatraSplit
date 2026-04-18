@@ -1,13 +1,22 @@
-import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Coins, Zap } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/ui/avatar'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/toaster'
 import { useGroup, useGroupBalances } from '@/hooks/useGroups'
 import { useMe } from '@/hooks/useMe'
 import { useSettle } from '@/hooks/useMutations'
-import { useToast } from '@/components/ui/toaster'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { ArrowLeft, ArrowRight, Check, Coins } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 
 export function SettleUpPage() {
   const { id } = useParams()
@@ -16,6 +25,7 @@ export function SettleUpPage() {
   const { data: me } = useMe()
   const settle = useSettle(id)
   const { toast } = useToast()
+  const [confirmPayTransfer, setConfirmPayTransfer] = useState(null)
 
   const members = group?.members || []
   const byId = (uid) => members.find((m) => m.id === uid)
@@ -24,7 +34,6 @@ export function SettleUpPage() {
   const meId = me?.id
   const youOwe = transfers.filter((t) => t.from_user === meId)
   const youAreOwed = transfers.filter((t) => t.to_user === meId)
-  const others = transfers.filter((t) => t.from_user !== meId && t.to_user !== meId)
 
   const handleMarkPaid = (t) => {
     settle.mutate(
@@ -42,14 +51,31 @@ export function SettleUpPage() {
     )
   }
 
-  const handlePay = () => {
-    toast({
-      title: 'Bank transfer',
-      description: 'Direct bank payment coming soon — TatraBank integration planned.',
-    })
+  const handleConfirmPay = (t) => {
+    setConfirmPayTransfer(t)
   }
 
-  const allSettled = !isLoading && transfers.length === 0
+  const handlePay = () => {
+    if (!confirmPayTransfer) return
+    settle.mutate(
+      {
+        from_user: confirmPayTransfer.from_user,
+        to_user: confirmPayTransfer.to_user,
+        amount_cents: confirmPayTransfer.amount_cents,
+        currency: group?.currency || 'EUR',
+        method: 'manual',
+      },
+      {
+        onSuccess: () => {
+          toast({ title: 'Payment recorded', description: 'The transfer was marked as paid.' })
+          setConfirmPayTransfer(null)
+        },
+        onError: () => toast({ variant: 'error', title: 'Failed', description: 'Could not record payment.' }),
+      },
+    )
+  }
+
+  const allSettled = !isLoading && relatedTransfers.length === 0
 
   return (
     <div className="space-y-4">
@@ -80,7 +106,7 @@ export function SettleUpPage() {
       ) : (
         <div className="space-y-5">
           {youOwe.length > 0 && (
-            <Section label="You owe" labelColor="text-[#E84040]">
+            <Section label="YOU OWE" labelColor="text-[#E84040]">
               {youOwe.map((t, idx) => (
                 <Row key={idx}>
                   <TransferCard
@@ -89,10 +115,10 @@ export function SettleUpPage() {
                     amountCents={t.amount_cents}
                     currency={group?.currency || 'EUR'}
                     amountColor="#E84040"
-                    onMarkPaid={() => handleMarkPaid(t)}
-                    onPay={handlePay}
+                    onAction={() => handleConfirmPay(t)}
                     isPending={settle.isPending}
-                    showPay
+                    actionLabel="Pay"
+                    actionVariant="danger"
                   />
                 </Row>
               ))}
@@ -109,23 +135,10 @@ export function SettleUpPage() {
                     amountCents={t.amount_cents}
                     currency={group?.currency || 'EUR'}
                     amountColor="#1DB954"
-                    onMarkPaid={() => handleMarkPaid(t)}
+                    onAction={() => handleMarkPaid(t)}
                     isPending={settle.isPending}
-                  />
-                </Row>
-              ))}
-            </Section>
-          )}
-
-          {others.length > 0 && (
-            <Section label="Other transfers" labelColor="text-muted-foreground">
-              {others.map((t, idx) => (
-                <Row key={idx}>
-                  <OtherRow
-                    from={byId(t.from_user)}
-                    to={byId(t.to_user)}
-                    amountCents={t.amount_cents}
-                    currency={group?.currency || 'EUR'}
+                    actionLabel="Mark as paid"
+                    actionVariant="primary"
                   />
                 </Row>
               ))}
@@ -133,6 +146,37 @@ export function SettleUpPage() {
           )}
         </div>
       )}
+
+      <Dialog
+        open={!!confirmPayTransfer}
+        onOpenChange={(open) => !open && setConfirmPayTransfer(null)}
+      >
+        <DialogContent onClose={() => setConfirmPayTransfer(null)}>
+          <DialogHeader>
+            <DialogTitle>Confirm payment</DialogTitle>
+            <DialogDescription>
+              {confirmPayTransfer
+                ? `Pay ${formatMoney(confirmPayTransfer.amount_cents, group?.currency || 'EUR')} to ${byId(confirmPayTransfer.to_user)?.display_name || 'this member'}?`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setConfirmPayTransfer(null)}
+              className="rounded-full border border-[var(--color-border)] px-4 py-2 text-sm font-medium text-[var(--color-foreground)] hover:bg-[var(--color-secondary)]"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handlePay}
+              disabled={settle.isPending}
+              className="rounded-full bg-[#E84040] px-4 py-2 text-sm font-semibold text-white hover:bg-[#d13434] disabled:opacity-50"
+            >
+              Confirm pay
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -156,7 +200,17 @@ function Row({ children }) {
   )
 }
 
-function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid, onPay, isPending, showPay }) {
+function TransferCard({
+  from,
+  to,
+  amountCents,
+  currency,
+  amountColor,
+  onAction,
+  isPending,
+  actionLabel,
+  actionVariant,
+}) {
   return (
     <div className="p-4 space-y-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
@@ -186,49 +240,18 @@ function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid
 
       <div className="flex gap-2">
         <button
-          onClick={onMarkPaid}
+          onClick={onAction}
           disabled={isPending}
           className={cn(
             'flex-1 flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-            'bg-[#0a74b8] text-white hover:bg-[#0969a6] disabled:opacity-50',
+            actionVariant === 'danger'
+              ? 'bg-[#E84040] text-white hover:bg-[#d13434] disabled:opacity-50'
+              : 'bg-[#0a74b8] text-white hover:bg-[#0969a6] disabled:opacity-50',
           )}
         >
           <Check className="h-4 w-4" />
-          Mark as paid
+          {actionLabel}
         </button>
-        {showPay && (
-          <button
-            onClick={onPay}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
-              'border border-[#0a74b8]/45 bg-[#0a74b8]/14 text-[#45a5e6] hover:bg-[#0a74b8]/22',
-            )}
-          >
-            <Zap className="h-4 w-4" />
-            Pay now
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function OtherRow({ from, to, amountCents, currency }) {
-  return (
-    <div className="p-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 opacity-60">
-      <div className="flex items-center gap-2 min-w-0">
-        <Avatar name={from?.display_name} color={from?.color} size="sm" />
-        <div className="min-w-0 text-xs text-muted-foreground leading-tight break-words whitespace-normal">{from?.display_name}</div>
-      </div>
-      <div className="flex flex-col items-center gap-0.5 shrink-0 mx-1">
-        <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <div className="text-xs font-semibold tabular-nums text-muted-foreground whitespace-nowrap">
-          {formatMoney(amountCents, currency)}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 min-w-0 justify-self-end w-full">
-        <Avatar name={to?.display_name} color={to?.color} size="sm" />
-        <div className="min-w-0 text-xs text-muted-foreground leading-tight break-words whitespace-normal">{to?.display_name}</div>
       </div>
     </div>
   )

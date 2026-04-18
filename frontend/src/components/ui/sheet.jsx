@@ -36,7 +36,7 @@ export function Sheet({ open, onOpenChange, side = 'right', className, children 
         : 'slide-in-from-bottom 260ms cubic-bezier(0.22, 0.61, 0.36, 1)'
 
   return createPortal(
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[90]">
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         style={{ animation: 'fade-in 200ms ease-out' }}
