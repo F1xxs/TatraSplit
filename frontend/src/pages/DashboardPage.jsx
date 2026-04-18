@@ -79,9 +79,6 @@ export function DashboardPage() {
                       {formatMoney(Math.abs(netBalance), 'EUR')}
                     </div>
                   )}
-                  <div className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
-                    Balance valid as of {new Date().toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}
-                  </div>
                 </div>
                 {/* Mini sparkline stub */}
                 <div className="w-20 h-10 opacity-40">
@@ -93,7 +90,7 @@ export function DashboardPage() {
               </div>
 
               {/* Account actions */}
-              <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex gap-4">
+              <div className="mt-1 pt-4 border-t border-[var(--color-border)] flex gap-4">
                 <button
                   onClick={copyIban}
                   className="flex items-center gap-1.5 text-sm text-[var(--color-primary)] font-medium"
