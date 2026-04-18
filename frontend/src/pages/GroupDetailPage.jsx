@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, Plus, Share2, Coins, Sparkles } from 'lucide-react'
+import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { AvatarStack } from '@/components/ui/avatar'
+import { Avatar, AvatarStack } from '@/components/ui/avatar'
 import { ExpenseRow } from '@/components/shared/ExpenseRow'
 import { BalancePill } from '@/components/shared/BalancePill'
 import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
@@ -19,8 +19,9 @@ import {
   useGroupBalances,
   useGroupActivity,
 } from '@/hooks/useGroups'
-import { formatMoney, getCategory } from '@/lib/format'
+import { formatMoney } from '@/lib/format'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
 
 export function GroupDetailPage() {
   const { id } = useParams()
@@ -39,7 +40,6 @@ export function GroupDetailPage() {
       const res = await api.get(`/groups/${id}/invite`)
       setInvite(res.data)
     } catch {
-      /* fallback to group's own token */
       setInvite({ invite_token: group?.invite_token })
     }
     setInviteOpen(true)
@@ -51,184 +51,165 @@ export function GroupDetailPage() {
       (m) => m.user_id === me?.id || m.user_id === me?._id,
     )?.net_cents ?? 0
 
-  // Category rollup for this group
   const categoryData = aggregateByCategory(expenses)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link
         to="/groups"
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        All groups
+        Shared payments
       </Link>
 
-      {/* Header card */}
-      <Card elevated>
-        <CardContent className="pt-6 pb-6">
-          {isLoading ? (
-            <Skeleton className="h-16 w-full" />
-          ) : (
-            <div className="flex flex-wrap items-center gap-5">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[var(--color-secondary)] text-3xl">
-                <span role="img" aria-hidden>
-                  {group?.emoji || '👥'}
-                </span>
+      {/* Account-detail style header card */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-5">
+        {isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 shrink-0 rounded-2xl bg-[var(--color-secondary)] flex items-center justify-center text-2xl">
+                <span role="img" aria-hidden>{group?.emoji || '👥'}</span>
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-2xl font-semibold tracking-tight truncate">
-                  {group?.name}
-                </h1>
-                <div className="mt-1 flex items-center gap-3 flex-wrap">
-                  <AvatarStack users={members} size="sm" max={6} />
+                <h1 className="text-lg font-semibold tracking-tight truncate">{group?.name}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <AvatarStack users={members} size="xs" max={5} />
                   <span className="text-xs text-[var(--color-muted-foreground)]">
                     {members.length} member{members.length === 1 ? '' : 's'} · {group?.currency || 'EUR'}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="text-right">
-                  <div className="text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                    Your balance
-                  </div>
-                  <BalancePill cents={myNet} currency={group?.currency || 'EUR'} size="lg" />
-                </div>
-              </div>
             </div>
-          )}
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
-            <Button onClick={() => setAddOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add expense
-            </Button>
-            <Link to={`/groups/${id}/settle`}>
-              <Button variant="secondary">
-                <Coins className="h-4 w-4" />
-                Settle up
-              </Button>
-            </Link>
-            <Button variant="outline" onClick={openInvite}>
-              <Share2 className="h-4 w-4" />
-              Invite
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <div className="text-[11px] text-[var(--color-muted-foreground)] uppercase tracking-wide">Your balance</div>
+              <BalancePill cents={myNet} currency={group?.currency || 'EUR'} size="lg" />
+            </div>
+          </>
+        )}
+      </div>
 
+      {/* Quick actions row */}
+      <div className="grid grid-cols-4 gap-3">
+        <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
+        <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
+        <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
+        <GroupAction icon={Users} label="Members" href={`/groups/${id}`} />
+      </div>
+
+      {/* Tabs */}
       <Tabs defaultValue="expenses">
-        <TabsList>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="balances">Balances</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+        <TabsList className="w-full rounded-none border-b border-[var(--color-border)] bg-transparent p-0 h-auto">
+          {['expenses', 'balances', 'activity'].map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className="flex-1 rounded-none border-b-2 border-transparent pb-3 pt-1 text-sm font-medium capitalize text-[var(--color-muted-foreground)] data-[state=active]:border-[var(--color-primary)] data-[state=active]:text-[var(--color-foreground)] data-[state=active]:shadow-none bg-transparent"
+            >
+              {tab === 'expenses' ? 'Expenses' : tab === 'balances' ? 'Balances' : 'Activity'}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        <TabsContent value="expenses">
+        <TabsContent value="expenses" className="mt-4">
           {expenses.length === 0 ? (
             <EmptyExpenses onAdd={() => setAddOpen(true)} />
           ) : (
-            <Card>
-              <CardContent className="pt-4 pb-4">
-                <div className="flex flex-col divide-y divide-[var(--color-border)]/60">
-                  {groupExpensesByDate(expenses).map(({ date, items }) => (
-                    <div key={date} className="py-2 first:pt-0 last:pb-0">
-                      <div className="px-3 pb-2 pt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--color-muted-foreground)]">
-                        {date}
-                      </div>
-                      {items.map((e) => (
-                        <ExpenseRow
-                          key={e.id || e._id}
-                          expense={e}
-                          me={me}
-                          members={members}
-                        />
-                      ))}
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              {groupExpensesByDate(expenses).map(({ date, items }) => (
+                <div key={date}>
+                  <div className="px-4 py-2 text-[11px] text-[var(--color-muted-foreground)] border-b border-[var(--color-border)] bg-[var(--color-card-elevated)]">
+                    {date}
+                  </div>
+                  {items.map((e, i) => (
+                    <div key={e.id || e._id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                      <ExpenseRow
+                        expense={e}
+                        me={me}
+                        members={members}
+                        groupId={id}
+                      />
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
 
-        <TabsContent value="balances">
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle>Who owes what</CardTitle>
-                <CardDescription>Net balances inside this group</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {(balances?.members || []).map((m) => (
-                  <MemberBalanceBar
-                    key={m.user_id}
-                    member={m}
-                    currency={group?.currency || 'EUR'}
-                    isMe={m.user_id === me?.id || m.user_id === me?._id}
-                  />
-                ))}
-                {(!balances || balances.members?.length === 0) && (
-                  <div className="text-sm text-[var(--color-muted-foreground)] py-6 text-center">
-                    No balances yet.
+        <TabsContent value="balances" className="mt-4 space-y-4">
+          {/* Member balances */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+            <div className="px-4 py-3 border-b border-[var(--color-border)]">
+              <div className="text-sm font-semibold">Who owes what</div>
+              <div className="text-xs text-[var(--color-muted-foreground)]">Net balances in this group</div>
+            </div>
+            {(balances?.members || []).length === 0 ? (
+              <div className="text-sm text-[var(--color-muted-foreground)] py-8 text-center">
+                No balances yet.
+              </div>
+            ) : (
+              <div>
+                {(balances?.members || []).map((m, i) => (
+                  <div key={m.user_id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                    <MemberBalanceRow
+                      member={m}
+                      currency={group?.currency || 'EUR'}
+                      isMe={m.user_id === me?.id || m.user_id === me?._id}
+                    />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Categories</CardTitle>
-                <CardDescription>Spending split by category</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CategoryDonut data={categoryData} currency={group?.currency || 'EUR'} />
-                <CategoryLegend data={categoryData} currency={group?.currency || 'EUR'} />
-              </CardContent>
-            </Card>
+                ))}
+              </div>
+            )}
           </div>
 
+          {/* Category donut */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+            <div className="text-sm font-semibold mb-1">Spending by category</div>
+            <div className="text-xs text-[var(--color-muted-foreground)] mb-3">All expenses in this group</div>
+            <CategoryDonut data={categoryData} currency={group?.currency || 'EUR'} />
+            <CategoryLegend data={categoryData} currency={group?.currency || 'EUR'} />
+          </div>
+
+          {/* Settle-up shortcut */}
           {balances?.simplified_transfers?.length > 0 && (
-            <Card className="mt-4">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <div className="h-9 w-9 rounded-xl bg-[var(--color-primary)]/15 text-[var(--color-primary)] flex items-center justify-center">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <CardTitle>Simplified settle-up</CardTitle>
-                    <CardDescription>
-                      {balances.simplified_transfers.length} transfer
-                      {balances.simplified_transfers.length === 1 ? '' : 's'} resolves everything
-                    </CardDescription>
-                  </div>
-                  <Link to={`/groups/${id}/settle`} className="ml-auto">
-                    <Button size="sm" variant="secondary">
-                      Open
-                    </Button>
-                  </Link>
+            <Link
+              to={`/groups/${id}/settle`}
+              className="flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3.5 hover:bg-[var(--color-card-elevated)] transition-colors"
+            >
+              <div className="h-10 w-10 rounded-full bg-[var(--color-primary)]/15 text-[var(--color-primary)] flex items-center justify-center text-lg">
+                ⚡
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold">Settle up</div>
+                <div className="text-xs text-[var(--color-muted-foreground)]">
+                  {balances.simplified_transfers.length} transfer{balances.simplified_transfers.length === 1 ? '' : 's'} resolves everything
                 </div>
-              </CardHeader>
-            </Card>
+              </div>
+              <ChevronRight className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+            </Link>
           )}
         </TabsContent>
 
-        <TabsContent value="activity">
-          <Card>
-            <CardContent className="pt-4 pb-3 px-2">
-              {activity.length === 0 ? (
-                <div className="text-center text-sm text-[var(--color-muted-foreground)] py-10">
-                  No activity yet.
-                </div>
-              ) : (
-                <div className="flex flex-col">
-                  {activity.map((a) => (
-                    <ActivityItem key={a.id || a._id} item={a} />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="activity" className="mt-4">
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+            {activity.length === 0 ? (
+              <div className="text-center text-sm text-[var(--color-muted-foreground)] py-12">
+                No activity yet.
+              </div>
+            ) : (
+              <div>
+                {activity.map((a, i) => (
+                  <div key={a.id || a._id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                    <ActivityItem item={a} className="px-4" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -249,65 +230,74 @@ export function GroupDetailPage() {
   )
 }
 
-function EmptyExpenses({ onAdd }) {
-  return (
-    <Card className="text-center py-14">
-      <CardContent className="pt-6">
-        <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-primary)]/15 flex items-center justify-center text-2xl">
-          🧾
-        </div>
-        <div className="mt-4 font-semibold">No expenses yet</div>
-        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Add your first shared expense to start tracking.
-        </p>
-        <Button onClick={onAdd} className="mt-4">
-          <Plus className="h-4 w-4" />
-          Add expense
-        </Button>
-      </CardContent>
-    </Card>
+function GroupAction({ icon, label, onClick, href, primary }) {
+  const GIcon = icon
+  const cls = cn('flex flex-col items-center gap-1.5')
+  const inner = (
+    <>
+      <div className={cn(
+        'h-12 w-12 rounded-2xl flex items-center justify-center transition-colors',
+        primary
+          ? 'bg-[var(--color-primary)] text-white'
+          : 'bg-[var(--color-card-elevated)] border border-[var(--color-border)] text-[var(--color-primary)]',
+      )}>
+        <GIcon className="h-5 w-5" />
+      </div>
+      <span className="text-[11px] text-[var(--color-muted-foreground)] text-center">{label}</span>
+    </>
   )
+  if (href) return <Link to={href} className={cls}>{inner}</Link>
+  return <button onClick={onClick} className={cls}>{inner}</button>
 }
 
-function MemberBalanceBar({ member, currency, isMe }) {
+function MemberBalanceRow({ member, currency, isMe }) {
   const net = member.net_cents ?? 0
   const positive = net > 0
   const zero = Math.abs(net) < 1
   return (
-    <div className="rounded-xl px-3 py-2 hover:bg-[var(--color-secondary)]/60 transition-colors">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-semibold text-white shrink-0"
-            style={{ background: member.color || 'hsl(263 82% 72%)' }}
-          >
-            {member.display_name?.[0] || '?'}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">
-              {member.display_name} {isMe && <span className="text-[var(--color-muted-foreground)] text-xs">(you)</span>}
-            </div>
-            <div className="text-xs text-[var(--color-muted-foreground)]">
-              {zero
-                ? 'all settled'
-                : positive
-                  ? `is owed ${formatMoney(Math.abs(net), currency)}`
-                  : `owes ${formatMoney(Math.abs(net), currency)}`}
-            </div>
-          </div>
-        </div>
-        <BalancePill cents={net} currency={currency} />
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <div
+        className="h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
+        style={{ background: member.color || '#0070D2' }}
+      >
+        {member.display_name?.[0] || '?'}
       </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate">
+          {member.display_name}{isMe && <span className="text-[var(--color-muted-foreground)] text-xs font-normal"> (you)</span>}
+        </div>
+        <div className="text-xs text-[var(--color-muted-foreground)]">
+          {zero ? 'All settled' : positive ? `Owed ${formatMoney(Math.abs(net), currency)}` : `Owes ${formatMoney(Math.abs(net), currency)}`}
+        </div>
+      </div>
+      <BalancePill cents={net} currency={currency} />
+    </div>
+  )
+}
+
+function EmptyExpenses({ onAdd }) {
+  return (
+    <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] text-center py-14">
+      <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-primary)]/15 flex items-center justify-center text-2xl">
+        🧾
+      </div>
+      <div className="mt-4 font-semibold">No expenses yet</div>
+      <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
+        Add your first shared expense to start tracking.
+      </p>
+      <button
+        onClick={onAdd}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[var(--color-primary)] text-white px-4 py-2 text-sm font-medium"
+      >
+        <Plus className="h-4 w-4" />
+        Add expense
+      </button>
     </div>
   )
 }
 
 function groupExpensesByDate(expenses) {
-  const fmt = new Intl.DateTimeFormat('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  })
+  const fmt = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   const byDate = new Map()
   for (const e of expenses) {
     const d = e.created_at ? new Date(e.created_at) : new Date()
@@ -324,8 +314,5 @@ function aggregateByCategory(expenses) {
     const c = e.category || 'other'
     map.set(c, (map.get(c) || 0) + (e.amount_cents || 0))
   }
-  return Array.from(map.entries()).map(([category, spent_cents]) => ({
-    category,
-    spent_cents,
-  }))
+  return Array.from(map.entries()).map(([category, spent_cents]) => ({ category, spent_cents }))
 }

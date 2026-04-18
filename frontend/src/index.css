@@ -1,47 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: hsl(240 6% 5%);
-  --color-foreground: hsl(0 0% 98%);
+  --color-background: #0D0D12;
+  --color-foreground: #FFFFFF;
 
-  --color-card: hsl(240 6% 8%);
-  --color-card-foreground: hsl(0 0% 98%);
-  --color-card-elevated: hsl(240 5% 11%);
+  --color-card: #1A1A22;
+  --color-card-foreground: #FFFFFF;
+  --color-card-elevated: #242430;
 
-  --color-popover: hsl(240 6% 8%);
-  --color-popover-foreground: hsl(0 0% 98%);
+  --color-popover: #1A1A22;
+  --color-popover-foreground: #FFFFFF;
 
-  --color-primary: hsl(263 82% 72%);
-  --color-primary-foreground: hsl(240 10% 4%);
+  --color-primary: #0070D2;
+  --color-primary-dim: #0055A0;
+  --color-primary-foreground: #FFFFFF;
 
-  --color-secondary: hsl(240 5% 13%);
-  --color-secondary-foreground: hsl(0 0% 98%);
+  --color-secondary: #242430;
+  --color-secondary-foreground: #FFFFFF;
 
-  --color-muted: hsl(240 5% 13%);
-  --color-muted-foreground: hsl(240 5% 65%);
+  --color-muted: #242430;
+  --color-muted-foreground: #9CA3AF;
 
-  --color-accent: hsl(240 5% 16%);
-  --color-accent-foreground: hsl(0 0% 98%);
+  --color-accent: #2A2A35;
+  --color-accent-foreground: #FFFFFF;
 
-  --color-destructive: hsl(0 75% 62%);
-  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-destructive: #E84040;
+  --color-destructive-foreground: #FFFFFF;
 
-  --color-success: hsl(142 72% 55%);
-  --color-success-foreground: hsl(142 72% 10%);
+  --color-success: #1DB954;
+  --color-success-foreground: #0a2e18;
 
-  --color-warning: hsl(38 92% 60%);
-  --color-info: hsl(199 89% 65%);
+  --color-warning: #F59E0B;
+  --color-info: #0070D2;
 
-  --color-border: hsl(240 5% 15%);
-  --color-input: hsl(240 5% 15%);
-  --color-ring: hsl(263 82% 72%);
+  --color-amount-debit: #E84040;
+  --color-amount-credit: #1DB954;
+  --color-pending: #F59E0B;
 
-  --color-chart-1: hsl(263 82% 72%);
-  --color-chart-2: hsl(199 89% 65%);
-  --color-chart-3: hsl(142 72% 55%);
-  --color-chart-4: hsl(38 92% 60%);
-  --color-chart-5: hsl(340 82% 65%);
-  --color-chart-6: hsl(173 70% 55%);
+  --color-border: #2A2A35;
+  --color-input: #242430;
+  --color-ring: #0070D2;
+
+  --color-chart-1: #0070D2;
+  --color-chart-2: #1DB954;
+  --color-chart-3: #F59E0B;
+  --color-chart-4: #E84040;
+  --color-chart-5: #8B5CF6;
+  --color-chart-6: #06B6D4;
 
   --radius: 0.875rem;
   --radius-sm: calc(var(--radius) - 6px);
@@ -86,55 +91,52 @@
     flex-direction: column;
   }
 
-  /* Subtle ambient gradient in the background for depth */
+  /* Subtle blue ambient glow at top */
   body::before {
     content: '';
     position: fixed;
     inset: 0;
-    background:
-      radial-gradient(1100px 600px at 10% -10%, hsl(263 82% 72% / 0.10), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, hsl(199 89% 65% / 0.06), transparent 55%),
-      radial-gradient(700px 400px at 50% 120%, hsl(340 82% 65% / 0.05), transparent 60%);
+    background: radial-gradient(900px 400px at 50% -5%, #0070D2 / 0.04, transparent 60%);
     pointer-events: none;
     z-index: -1;
   }
 
   ::selection {
-    background: hsl(263 82% 72% / 0.35);
+    background: #0070D2 / 0.35;
     color: var(--color-foreground);
   }
 
-  /* Subtle scrollbar */
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: hsl(240 5% 18%);
+    background: #2A2A35;
     border-radius: 8px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: hsl(240 5% 25%);
+    background: #3A3A45;
   }
 }
 
 @layer utilities {
-  .glass {
-    background: linear-gradient(
-        180deg,
-        hsl(240 5% 10% / 0.75),
-        hsl(240 5% 7% / 0.75)
-      );
-    backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  .bank-bar {
+    background-color: #1A1A22;
+    border-bottom: 1px solid #2A2A35;
   }
 
   .text-balance {
     text-wrap: balance;
   }
+
+  .amount-debit {
+    color: #E84040;
+  }
+  .amount-credit {
+    color: #1DB954;
+  }
 }
 
-/* Radix / shadcn-style animations (hand-rolled) */
 @keyframes fade-in {
   from { opacity: 0; }
   to   { opacity: 1; }

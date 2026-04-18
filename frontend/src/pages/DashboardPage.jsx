@@ -1,190 +1,278 @@
-import { Link } from 'react-router-dom'
-import { ArrowUpRight, ArrowDownRight, TrendingUp, ChevronRight } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import {
+  ArrowLeftRight, CreditCard, Building2, RefreshCw,
+  Share2, ChevronRight, ChevronLeft, Mail,
+} from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GroupCard } from '@/components/shared/GroupCard'
-import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
-import { ActivityItem } from '@/components/shared/ActivityItem'
+import { BankTransactionRow } from '@/components/shared/ActivityItem'
 import { useMe, useMeBalances } from '@/hooks/useMe'
 import { useGroups, useActivity } from '@/hooks/useGroups'
 import { formatMoney } from '@/lib/format'
+import { useToast } from '@/components/ui/toaster'
+
+const STUB_IBAN = 'SK18 1100 0000 0029 3294 5724'
 
 export function DashboardPage() {
   const { data: me, isLoading: meLoading } = useMe()
   const { data: balances, isLoading: balLoading } = useMeBalances()
   const { data: groups = [], isLoading: groupsLoading } = useGroups()
   const { data: activity = [], isLoading: actLoading } = useActivity()
+  const { toast } = useToast()
+  const navigate = useNavigate()
+  const [cardIdx, setCardIdx] = useState(0)
+
+  const netBalance = (balances?.total_owed_to_me_cents || 0) - (balances?.total_i_owe_cents || 0)
+  const firstName = me?.display_name?.split(' ')[0] || ''
+  const lastName = me?.display_name?.split(' ').slice(1).join(' ') || ''
+
+  function copyIban() {
+    navigator.clipboard?.writeText(STUB_IBAN.replace(/\s/g, ''))
+    toast({ title: 'IBAN copied to clipboard' })
+  }
+
+  function stub() {
+    toast({ title: 'Feature not available in demo' })
+  }
+
+  const cards = [
+    { type: 'tatra', label: 'TatraSplit Account' },
+    { type: 'visa', label: 'Visa **** 0374' },
+  ]
 
   return (
-    <div className="space-y-8">
-      {/* Greeting */}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {meLoading ? (
-            <Skeleton className="h-8 w-48" />
+    <div className="space-y-6">
+      {/* Top greeting row */}
+      <div className="flex items-center justify-between">
+        <button onClick={stub} className="text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors">
+          <Mail className="h-5 w-5" />
+        </button>
+        <button
+          onClick={stub}
+          className="text-xs text-[var(--color-primary)] font-medium"
+        >
+          Customize
+        </button>
+      </div>
+
+      {/* Accounts section */}
+      <section>
+        <h2 className="text-base font-semibold mb-3">Accounts</h2>
+
+        {/* Card carousel */}
+        <div className="relative">
+          {cardIdx === 0 ? (
+            /* Real account card */
+            <div className="rounded-2xl bg-[var(--color-card-elevated)] border border-[var(--color-border)] p-5">
+              <div className="flex items-start justify-between">
+                <div className="min-w-0">
+                  {meLoading ? (
+                    <Skeleton className="h-5 w-36 mb-1" />
+                  ) : (
+                    <div className="font-semibold text-sm truncate">
+                      {lastName} {firstName}
+                    </div>
+                  )}
+                  <div className="text-[11px] text-[var(--color-muted-foreground)] font-mono mt-0.5">
+                    {STUB_IBAN}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-end justify-between">
+                <div>
+                  <div className="text-[11px] text-[var(--color-muted-foreground)] uppercase tracking-wide">
+                    Account balance
+                  </div>
+                  {balLoading ? (
+                    <Skeleton className="h-8 w-32 mt-1" />
+                  ) : (
+                    <div className="text-3xl font-bold tabular-nums mt-1">
+                      {formatMoney(Math.abs(netBalance), 'EUR')}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
+                    Balance valid as of {new Date().toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date().toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                {/* Mini sparkline stub */}
+                <div className="w-20 h-10 opacity-40">
+                  <svg viewBox="0 0 80 40" fill="none" className="w-full h-full">
+                    <polyline points="0,30 20,20 40,25 60,10 80,15" stroke="#1DB954" strokeWidth="2" fill="none" />
+                    <polygon points="0,30 20,20 40,25 60,10 80,15 80,40 0,40" fill="#1DB954" fillOpacity="0.15" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Account actions */}
+              <div className="mt-4 pt-4 border-t border-[var(--color-border)] flex gap-4">
+                <button
+                  onClick={copyIban}
+                  className="flex items-center gap-1.5 text-sm text-[var(--color-primary)] font-medium"
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share IBAN
+                </button>
+                <button
+                  onClick={stub}
+                  className="flex items-center gap-1.5 text-sm text-[var(--color-primary)] font-medium"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Request payment
+                </button>
+              </div>
+            </div>
           ) : (
-            <>Hi, {me?.display_name?.split(' ')[0] || 'there'} 👋</>
+            /* Dummy Visa card */
+            <button
+              onClick={stub}
+              className="w-full rounded-2xl bg-[#111114] border border-[var(--color-border)] p-5 text-left"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[11px] text-[var(--color-muted-foreground)] mb-1">
+                    {me?.display_name}
+                  </div>
+                  <div className="font-mono text-sm tracking-widest">
+                    4405 77** **** 0374
+                  </div>
+                </div>
+                <span className="text-lg font-bold italic text-white/80">VISA</span>
+              </div>
+              <div className="mt-4 flex items-end justify-between">
+                <div>
+                  <div className="text-[11px] text-[var(--color-muted-foreground)]">Disposable balance</div>
+                  <div className="text-2xl font-bold tabular-nums mt-0.5">1 563,34 EUR</div>
+                </div>
+              </div>
+            </button>
           )}
-        </h1>
-        <p className="text-sm text-[var(--color-muted-foreground)] mt-1">
-          Here's where you stand across all your groups.
-        </p>
-      </div>
 
-      {/* Balance hero */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <BalanceTile
-          label="You are owed"
-          amountCents={balances?.total_owed_to_me_cents}
-          currency="EUR"
-          positive
-          loading={balLoading}
-        />
-        <BalanceTile
-          label="You owe"
-          amountCents={balances?.total_i_owe_cents}
-          currency="EUR"
-          loading={balLoading}
-        />
-      </div>
-
-      {/* Spending + Activity split */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <Card className="lg:col-span-3" elevated>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <CardTitle>Spending by category</CardTitle>
-                <CardDescription>Last 30 days across your groups</CardDescription>
-              </div>
-              <div className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-[var(--color-primary)]">
-                <TrendingUp className="h-4 w-4" />
-              </div>
+          {/* Carousel nav */}
+          <div className="flex items-center justify-between mt-3">
+            <button
+              onClick={() => setCardIdx((i) => Math.max(0, i - 1))}
+              disabled={cardIdx === 0}
+              className="p-1 text-[var(--color-muted-foreground)] disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex gap-1.5">
+              {cards.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCardIdx(i)}
+                  className={`h-1.5 rounded-full transition-all ${i === cardIdx ? 'w-5 bg-[var(--color-primary)]' : 'w-1.5 bg-[var(--color-border)]'}`}
+                />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
-            {balLoading ? (
-              <Skeleton className="h-[180px] w-full rounded-xl" />
-            ) : (
-              <>
-                <CategoryDonut data={balances?.by_category_last_30d || []} />
-                <CategoryLegend data={balances?.by_category_last_30d || []} />
-              </>
-            )}
-          </CardContent>
-        </Card>
+            <button
+              onClick={() => setCardIdx((i) => Math.min(cards.length - 1, i + 1))}
+              disabled={cardIdx === cards.length - 1}
+              className="p-1 text-[var(--color-muted-foreground)] disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </section>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
-              <CardTitle>Recent activity</CardTitle>
-              <Link
-                to="/activity"
-                className="text-xs text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-              >
-                See all
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="px-2 pb-3">
-            {actLoading ? (
-              <div className="space-y-2 p-2">
-                {[0, 1, 2].map((i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : activity.length === 0 ? (
-              <div className="text-center text-sm text-[var(--color-muted-foreground)] py-6">
-                No activity yet.
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                {activity.slice(0, 5).map((a) => (
-                  <ActivityItem key={a.id || a._id} item={a} />
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Quick actions */}
+      <section>
+        <div className="grid grid-cols-4 gap-3">
+          <QuickAction
+            icon={ArrowLeftRight}
+            label="Transactions"
+            onClick={() => navigate('/activity')}
+          />
+          <QuickAction
+            icon={CreditCard}
+            label="Payment"
+            onClick={() => {
+              const first = groups[0]
+              if (first) navigate(`/groups/${first._id || first.id}/expenses/new`)
+              else navigate('/groups/new')
+            }}
+          />
+          <QuickAction icon={Building2} label="ATM" onClick={stub} />
+          <QuickAction icon={RefreshCw} label="Standing" onClick={stub} />
+        </div>
+      </section>
 
-      {/* Groups */}
+      {/* Shared payments */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold tracking-tight">Your groups</h2>
-          <Link to="/groups">
-            <Button variant="ghost" size="sm">
-              All
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+          <h2 className="text-base font-semibold">Shared payments</h2>
+          <Link to="/groups" className="text-sm text-[var(--color-primary)] font-medium">
+            All
           </Link>
         </div>
         {groupsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-[76px] w-full rounded-2xl" />
+          <div className="space-y-2">
+            {[0, 1].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-2xl" />
             ))}
           </div>
         ) : groups.length === 0 ? (
-          <EmptyGroups />
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">
+            <div className="text-sm text-[var(--color-muted-foreground)]">No shared payments yet.</div>
+            <Link to="/groups/new" className="mt-2 inline-block text-sm text-[var(--color-primary)] font-medium">
+              Create group →
+            </Link>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {groups.map((g) => (
+          <div className="space-y-2">
+            {groups.slice(0, 3).map((g) => (
               <GroupCard key={g.id || g._id} group={g} />
             ))}
           </div>
         )}
       </section>
-    </div>
-  )
-}
 
-function BalanceTile({ label, amountCents, currency = 'EUR', positive, loading }) {
-  const color = positive ? 'text-[var(--color-success)]' : 'text-[var(--color-destructive)]'
-  const bg = positive
-    ? 'bg-[var(--color-success)]/10 ring-[var(--color-success)]/20'
-    : 'bg-[var(--color-destructive)]/10 ring-[var(--color-destructive)]/20'
-  const Icon = positive ? ArrowUpRight : ArrowDownRight
-  return (
-    <div
-      className={`rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-6 relative overflow-hidden`}
-    >
-      <div className={`absolute -top-8 -right-8 h-32 w-32 rounded-full ring-8 ${bg}`} />
-      <div className="relative">
-        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-[var(--color-muted-foreground)]">
-          <div className={`h-6 w-6 rounded-md flex items-center justify-center ${bg}`}>
-            <Icon className={`h-3.5 w-3.5 ${color}`} strokeWidth={2.5} />
-          </div>
-          {label}
+      {/* Recent transactions */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold">Recent transactions</h2>
+          <Link to="/activity" className="text-sm text-[var(--color-primary)] font-medium">
+            All
+          </Link>
         </div>
-        <div className={`mt-3 text-4xl font-semibold tabular-nums ${color}`}>
-          {loading ? (
-            <Skeleton className="h-10 w-40" />
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+          {actLoading ? (
+            <div className="p-4 space-y-3">
+              {[0, 1, 2].map((i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : activity.length === 0 ? (
+            <div className="p-6 text-center text-sm text-[var(--color-muted-foreground)]">
+              No transactions yet.
+            </div>
           ) : (
-            formatMoney(amountCents || 0, currency)
+            <div>
+              {activity.slice(0, 5).map((a, i) => (
+                <BankTransactionRow key={a.id || a._id} item={a} border={i > 0} />
+              ))}
+            </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   )
 }
 
-function EmptyGroups() {
+function QuickAction({ icon, label, onClick }) {
+  const QIcon = icon
   return (
-    <Card className="text-center py-10">
-      <CardContent className="pt-6">
-        <div className="mx-auto h-12 w-12 rounded-2xl bg-[var(--color-primary)]/15 flex items-center justify-center text-2xl">
-          👥
-        </div>
-        <div className="mt-4 font-semibold">No groups yet</div>
-        <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-          Start a group with roommates, friends, or trip buddies.
-        </p>
-        <Link to="/groups/new" className="inline-block mt-4">
-          <Button>Create your first group</Button>
-        </Link>
-      </CardContent>
-    </Card>
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 group"
+    >
+      <div className="h-14 w-14 rounded-2xl bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-primary)] group-hover:bg-[var(--color-accent)] transition-colors">
+        <QIcon className="h-5 w-5" />
+      </div>
+      <span className="text-[11px] text-[var(--color-muted-foreground)] text-center leading-tight">
+        {label}
+      </span>
+    </button>
   )
 }

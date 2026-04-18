@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Sparkles, Check } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/ui/avatar'
@@ -22,13 +21,10 @@ export function SettleUpPage() {
 
   const members = group?.members || []
   const byId = (uid) => members.find((m) => (m.id || m._id) === uid)
-
   const transfers = balances?.simplified_transfers || []
-  const visibleTransfers = transfers.filter((_, i) => !done.has(i))
 
   const markPaid = async (idx, t) => {
-    const key = idx
-    setPending((p) => new Set(p).add(key))
+    setPending((p) => new Set(p).add(idx))
     try {
       await settle.mutateAsync({
         from_user: t.from_user,
@@ -36,25 +32,21 @@ export function SettleUpPage() {
         amount_cents: t.amount_cents,
         method: 'mock_transfer',
       })
-      setDone((d) => new Set(d).add(key))
+      setDone((d) => new Set(d).add(idx))
       toast({
         variant: 'success',
-        title: 'Marked as paid',
+        title: 'Payment confirmed',
         description: `${formatMoney(t.amount_cents, group?.currency || 'EUR')} settled`,
       })
     } catch (err) {
       toast({ variant: 'error', title: 'Could not settle', description: err.message })
     } finally {
-      setPending((p) => {
-        const n = new Set(p)
-        n.delete(key)
-        return n
-      })
+      setPending((p) => { const n = new Set(p); n.delete(idx); return n })
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link
         to={`/groups/${id}`}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
@@ -63,117 +55,111 @@ export function SettleUpPage() {
         Back to {group?.name || 'group'}
       </Link>
 
-      <Card elevated>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[var(--color-primary)]/15 text-[var(--color-primary)] flex items-center justify-center">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <CardTitle>Settle up</CardTitle>
-              <CardDescription>
-                The minimum transfers to square everyone up
-              </CardDescription>
-            </div>
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-full bg-[var(--color-primary)]/15 text-[var(--color-primary)] flex items-center justify-center">
+          ⚡
+        </div>
+        <div>
+          <h1 className="text-lg font-semibold">Settle up</h1>
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            Minimum transfers to square everyone up
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+        {isLoading ? (
+          <div className="p-4 space-y-3">
+            {[0, 1].map((i) => <Skeleton key={i} className="h-20 w-full" />)}
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[0, 1].map((i) => (
-                <Skeleton key={i} className="h-16 w-full rounded-xl" />
-              ))}
-            </div>
-          ) : visibleTransfers.length === 0 ? (
-            <AllSettled />
-          ) : (
-            <div className="space-y-3">
-              {transfers.map((t, idx) => {
-                if (done.has(idx)) return null
-                const from = byId(t.from_user)
-                const to = byId(t.to_user)
-                return (
+        ) : transfers.length === 0 || transfers.every((_, i) => done.has(i)) ? (
+          <AllSettled />
+        ) : (
+          <div>
+            {transfers.map((t, idx) => {
+              if (done.has(idx)) return null
+              const from = byId(t.from_user)
+              const to = byId(t.to_user)
+              return (
+                <div key={idx} className={idx > 0 ? 'border-t border-[var(--color-border)]' : ''}>
                   <TransferRow
-                    key={idx}
                     from={from}
                     to={to}
                     amountCents={t.amount_cents}
                     currency={group?.currency || 'EUR'}
                     onMarkPaid={() => markPaid(idx, t)}
-                    pending={pending.has(idx)}
+                    isPending={pending.has(idx)}
                   />
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function TransferRow({ from, to, amountCents, currency, onMarkPaid, pending }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-4 transition-all',
-        'hover:border-[var(--color-primary)]/40',
-      )}
-    >
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <PersonBlock person={from} subtitle="owes" />
-          <div className="flex flex-col items-center gap-0.5 shrink-0">
-            <ArrowRight className="h-5 w-5 text-[var(--color-muted-foreground)]" />
-            <div className="text-base font-semibold tabular-nums">
-              {formatMoney(amountCents, currency)}
-            </div>
+                </div>
+              )
+            })}
           </div>
-          <PersonBlock person={to} subtitle="gets" rightAlign />
-        </div>
-        <Button
-          onClick={onMarkPaid}
-          disabled={pending}
-          variant="success"
-          className="ml-auto"
-        >
-          {pending ? (
-            'Settling…'
-          ) : (
-            <>
-              <Check className="h-4 w-4" />
-              Mark paid
-            </>
-          )}
-        </Button>
+        )}
       </div>
     </div>
   )
 }
 
-function PersonBlock({ person, subtitle, rightAlign = false }) {
+function TransferRow({ from, to, amountCents, currency, onMarkPaid, isPending }) {
   return (
-    <div className={cn('flex items-center gap-2 min-w-0', rightAlign && 'flex-row-reverse text-right')}>
-      <Avatar name={person?.display_name} color={person?.color} size="md" />
-      <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
-          {subtitle}
+    <div className="p-4 flex items-center gap-3 flex-wrap">
+      {/* From */}
+      <div className="flex items-center gap-2 min-w-0">
+        <Avatar name={from?.display_name} color={from?.color} size="md" />
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted-foreground)]">owes</div>
+          <div className="text-sm font-semibold truncate">{from?.display_name}</div>
         </div>
-        <div className="font-semibold truncate">{person?.display_name}</div>
       </div>
+
+      {/* Arrow + amount */}
+      <div className="flex flex-col items-center gap-0.5 shrink-0 mx-2">
+        <ArrowRight className="h-4 w-4 text-[var(--color-muted-foreground)]" />
+        <div
+          className="text-sm font-bold tabular-nums"
+          style={{ color: '#E84040' }}
+        >
+          {formatMoney(amountCents, currency)}
+        </div>
+      </div>
+
+      {/* To */}
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        <Avatar name={to?.display_name} color={to?.color} size="md" />
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wide text-[var(--color-muted-foreground)]">gets</div>
+          <div className="text-sm font-semibold truncate">{to?.display_name}</div>
+        </div>
+      </div>
+
+      <button
+        onClick={onMarkPaid}
+        disabled={isPending}
+        className={cn(
+          'ml-auto flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-colors',
+          'bg-[#1DB954]/15 text-[#1DB954] hover:bg-[#1DB954]/25 disabled:opacity-50',
+        )}
+      >
+        {isPending ? 'Settling…' : (
+          <>
+            <Check className="h-4 w-4" />
+            Mark paid
+          </>
+        )}
+      </button>
     </div>
   )
 }
 
 function AllSettled() {
   return (
-    <div className="text-center py-10">
-      <div className="mx-auto h-16 w-16 rounded-2xl bg-[var(--color-success)]/15 text-[var(--color-success)] flex items-center justify-center text-3xl">
-        🎉
+    <div className="text-center py-14">
+      <div className="mx-auto h-16 w-16 rounded-full bg-[#1DB954]/15 flex items-center justify-center text-3xl">
+        ✓
       </div>
-      <div className="mt-4 text-lg font-semibold">Everyone's settled up</div>
+      <div className="mt-4 text-lg font-semibold">All settled up</div>
       <p className="mt-1 text-sm text-[var(--color-muted-foreground)]">
-        No transfers needed. Enjoy your day.
+        No transfers needed.
       </p>
     </div>
   )

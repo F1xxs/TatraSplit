@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom'
 import { CategoryIcon } from './CategoryIcon'
 import { formatMoney } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
-export function ExpenseRow({ expense, me, members = [], className }) {
+export function ExpenseRow({ expense, me, members = [], groupId, className }) {
   const paidByMe = me && (expense.paid_by === me.id || expense.paid_by === me._id)
   const myShare =
     me &&
@@ -13,51 +14,55 @@ export function ExpenseRow({ expense, me, members = [], className }) {
   const myImpactCents =
     myShare != null
       ? paidByMe
-        ? expense.amount_cents - myShare // lent out
-        : -myShare // owed
+        ? expense.amount_cents - myShare
+        : -myShare
       : 0
 
   const payer = members.find((m) => (m.id || m._id) === expense.paid_by)
   const payerName = payer?.display_name || 'someone'
 
+  const isDebit = myImpactCents <= 0
+  const amountColor = myImpactCents > 0 ? '#1DB954' : myImpactCents < 0 ? '#E84040' : undefined
+
   return (
     <div
       className={cn(
-        'flex items-center gap-4 rounded-xl px-3 py-3 hover:bg-[var(--color-secondary)]/60 transition-colors',
+        'flex items-center gap-3 px-4 py-3.5',
         className,
       )}
     >
       <CategoryIcon category={expense.category} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="font-medium truncate">{expense.description}</div>
-          <div className="font-semibold tabular-nums">
-            {formatMoney(expense.amount_cents, expense.currency)}
-          </div>
-        </div>
-        <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-[var(--color-muted-foreground)]">
-          <div className="truncate">
+        <div className="text-sm font-medium truncate">{expense.description}</div>
+        <div className="flex items-center gap-2 mt-0.5">
+          <span className="text-xs text-[var(--color-muted-foreground)] truncate">
             {paidByMe ? 'You paid' : `${payerName} paid`}
-          </div>
-          {myShare != null ? (
-            <div
-              className={cn(
-                'tabular-nums',
-                myImpactCents > 0
-                  ? 'text-[var(--color-success)]'
-                  : myImpactCents < 0
-                    ? 'text-[var(--color-destructive)]'
-                    : '',
-              )}
+          </span>
+          {groupId && (
+            <Link
+              to={`/groups/${groupId}/settle`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center rounded-full bg-[#1DB954]/15 text-[#1DB954] text-[10px] font-semibold px-2 py-0.5 shrink-0 hover:bg-[#1DB954]/25 transition-colors"
             >
-              {myImpactCents > 0
-                ? `you lent ${formatMoney(myImpactCents, expense.currency)}`
-                : myImpactCents < 0
-                  ? `you owe ${formatMoney(Math.abs(myImpactCents), expense.currency)}`
-                  : 'not involved'}
-            </div>
-          ) : null}
+              Rozdeliť
+            </Link>
+          )}
         </div>
+      </div>
+      <div className="shrink-0 text-right">
+        <div
+          className="text-sm font-semibold tabular-nums"
+          style={amountColor ? { color: amountColor } : undefined}
+        >
+          {isDebit && myImpactCents !== 0 ? '−' : ''}{formatMoney(expense.amount_cents, expense.currency)}
+        </div>
+        {myShare != null && myImpactCents !== 0 && (
+          <div className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
+            {myImpactCents > 0
+              ? `lent ${formatMoney(myImpactCents, expense.currency)}`
+              : `owe ${formatMoney(Math.abs(myImpactCents), expense.currency)}`}
+          </div>
+        )}
       </div>
     </div>
   )
