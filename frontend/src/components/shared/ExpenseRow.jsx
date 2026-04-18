@@ -42,7 +42,7 @@ export function ExpenseRow({ expense, me, members = [], groupId, className }) {
               onClick={(e) => e.stopPropagation()}
               className="inline-flex items-center rounded-full bg-[#1DB954]/15 text-[#1DB954] text-[10px] font-semibold px-2 py-0.5 shrink-0 hover:bg-[#1DB954]/25 transition-colors"
             >
-              Rozdeliť
+              Split
             </Link>
           )}
         </div>

@@ -32,6 +32,14 @@ backend/app/
 
 No real auth. `get_current_user` reads `X-User-Handle` header; falls back to `settings.current_user_handle` (`@misha`). Returns the user document or 401.
 
+## Runtime config (CORS)
+
+- CORS middleware in `app/main.py` is fully driven by `Settings` in `app/core/config.py`.
+- Configure these env vars in `backend/.env` (template in `backend/.env.example`):
+  - `CORS_ALLOW_ORIGINS` (comma-separated allowlist, e.g. localhost/127.0.0.1/LAN IP)
+  - `CORS_ALLOW_ORIGIN_REGEX` (optional pattern allowlist)
+  - `CORS_ALLOW_CREDENTIALS`, `CORS_ALLOW_METHODS`, `CORS_ALLOW_HEADERS`
+
 ## Wallet
 
 Users have a `balance_cents` field (seeded at 50000 = 500 EUR). Settlements deduct from payer's wallet and credit recipient's wallet atomically. This is the demo banking model — settlements require sufficient wallet balance.

@@ -25,6 +25,7 @@ Before starting any task, read the relevant files in `.claude/`:
 # Backend
 cd backend && python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt && cp .env.example .env
+# In backend/.env, replace CORS_ALLOW_ORIGINS and (optionally) CORS_ALLOW_ORIGIN_REGEX for your localhost/LAN setup
 uvicorn app.main:app --reload   # http://localhost:8000
 
 # Frontend
@@ -85,6 +86,7 @@ Routes (all `/api/v1`): `health`, `users`, `groups`, `expenses`, `settlements`, 
 - **IDs**: always `entity.id` (string). `normalizeEntity` applied in all query hooks — never write `id || _id`.
 - **Invalidation**: mutations call `invalidateGroup(qc, id)` and/or `invalidateGlobal(qc)` — don't repeat `invalidateQueries` inline.
 - **Demo identity**: selected account is persisted in `tatrasplit_user_handle`; API requests read that key and set `X-User-Handle` (fallback `@misha`).
+- **CORS**: configured via env in `backend/app/core/config.py` (`CORS_ALLOW_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX`, `CORS_ALLOW_*`). Edit `backend/.env` using `backend/.env.example` templates for replaceable localhost/LAN origins.
 - **New backend route**: add file in `api/routes/`, register in `main.py`.
 - **New page**: add `React.lazy` import in `App.jsx`, wrap element with `<Suspense>`.
 - **Loading/empty/error states**: use `<DataState>` component in list pages.

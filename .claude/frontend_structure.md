@@ -14,6 +14,7 @@ The frontend is a **React 19 + Vite 8** single-page app with:
 - **recharts** for charts (category donut)
 - **qrcode.react** for invite QR rendering
 - **class-variance-authority + clsx + tailwind-merge** for style composition
+- **vite-plugin-pwa** for installable app assets (manifest + service worker)
 
 Build/lint scripts from `package.json`:
 
@@ -21,6 +22,24 @@ Build/lint scripts from `package.json`:
 - `npm run build`
 - `npm run lint`
 - `npm run preview`
+
+`npm run build` now emits PWA assets (`manifest.webmanifest` + service worker files) from `vite-plugin-pwa`.
+
+### Running PWA locally
+
+Use preview mode (not `npm run dev`) to validate installability:
+
+```bash
+cd frontend
+npm install
+npm run build
+npm run preview -- --host 127.0.0.1 --port 4173
+```
+
+Quick checks:
+- Open `http://127.0.0.1:4173/manifest.webmanifest` (should return JSON manifest).
+- Open `http://127.0.0.1:4173/sw.js` (service worker file should exist).
+- In Chrome DevTools → Application, verify Manifest + Service Worker are present.
 
 ## 2) High-level folder map
 
