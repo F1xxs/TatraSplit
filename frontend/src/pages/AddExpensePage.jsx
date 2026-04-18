@@ -62,6 +62,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
     if (open && splitType === 'equal' && members.length && amount > 0) {
       setSplit(distributeEqual(amount, members.map((m) => m.id)))
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, splitType, amount, members.length])
 
   const addExpense = useAddExpense(groupId)

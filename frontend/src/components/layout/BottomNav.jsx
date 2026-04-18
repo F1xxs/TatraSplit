@@ -77,7 +77,8 @@ export function BottomNav() {
   )
 }
 
-function NavItem({ to, icon: Icon, label, end = false }) {
+function NavItem({ to, icon: NavIcon, label, end = false }) {
+  const Icon = NavIcon
   return (
     <NavLink
       to={to}

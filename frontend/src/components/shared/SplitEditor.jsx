@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/format'
 
 // Distributes amount_cents evenly across included members with deterministic remainder.
+// eslint-disable-next-line react-refresh/only-export-components
 export function distributeEqual(amountCents, memberIds) {
   const n = memberIds.length
   if (n === 0) return []
@@ -53,9 +54,11 @@ export function SplitEditor({
   }
 
   // Recompute equal on amount change when in equal mode
+  const includedIdsKey = includedIds.join(',')
   const recomputedEqual = useMemo(
     () => distributeEqual(amountCents, includedIds),
-    [amountCents, includedIds.join(',')],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [amountCents, includedIdsKey],
   )
 
   return (

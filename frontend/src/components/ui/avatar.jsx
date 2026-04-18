@@ -38,7 +38,7 @@ export function AvatarStack({ users = [], max = 4, size = 'sm', className }) {
     <div className={cn('flex items-center', className)}>
       <div className="flex -space-x-2">
         {shown.map((u) => (
-          <Avatar key={u.id || u._id || u.handle} name={u.display_name} color={u.color} size={size} ring />
+          <Avatar key={u.id} name={u.display_name} color={u.color} size={size} ring />
         ))}
       </div>
       {extra > 0 && (

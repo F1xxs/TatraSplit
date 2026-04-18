@@ -39,7 +39,7 @@ const buttonVariants = cva(
 )
 
 export const Button = forwardRef(function Button(
-  { className, variant, size, asChild, ...props },
+  { className, variant, size, ...props },
   ref,
 ) {
   return (

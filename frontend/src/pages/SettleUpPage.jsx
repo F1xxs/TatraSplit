@@ -32,6 +32,7 @@ export function SettleUpPage() {
   const transfers = balances?.simplified_transfers || []
 
   const meId = me?.id
+  const relatedTransfers = transfers.filter((t) => t.from_user === meId || t.to_user === meId)
   const youOwe = transfers.filter((t) => t.from_user === meId)
   const youAreOwed = transfers.filter((t) => t.to_user === meId)
 
