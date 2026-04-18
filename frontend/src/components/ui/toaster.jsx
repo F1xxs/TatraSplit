@@ -28,7 +28,7 @@ export function ToastProvider({ children }) {
   return (
     <ToastCtx.Provider value={{ toast, dismiss }}>
       {children}
-      <div className="pointer-events-none fixed inset-x-3 bottom-20 z-[80] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-full sm:max-w-sm">
+      <div className="pointer-events-none fixed inset-x-3 bottom-20 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-full sm:max-w-sm">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
         ))}

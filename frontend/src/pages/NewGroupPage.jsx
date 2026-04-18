@@ -28,6 +28,7 @@ export function NewGroupPage() {
   const [selected, setSelected] = useState(new Set())
 
   const myId = me?.id
+  const meUser = users.find((u) => u.id === myId) || me
   const others = users.filter((u) => u.id !== myId)
 
   const toggle = (handle) => {
@@ -133,6 +134,25 @@ export function NewGroupPage() {
               You're automatically added. Pick who else is in.
             </p>
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {meUser && (
+                <div
+                  className="flex items-center gap-3 rounded-xl border px-3 py-2 text-left border-[var(--color-primary)] bg-[var(--color-primary)]/10 opacity-90"
+                >
+                  <Avatar name={meUser.display_name} color={meUser.color} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">
+                      {meUser.display_name}{' '}
+                      <span className="text-xs text-[var(--color-muted-foreground)] font-normal">
+                        (you)
+                      </span>
+                    </div>
+                    <div className="text-xs text-[var(--color-muted-foreground)] truncate">
+                      {meUser.handle}
+                    </div>
+                  </div>
+                  <Check className="h-4 w-4 text-[var(--color-primary)]" />
+                </div>
+              )}
               {others.map((u) => {
                 const active = selected.has(u.handle)
                 return (

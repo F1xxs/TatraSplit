@@ -88,7 +88,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp 
         currency: group?.currency || 'EUR',
         paid_by: paidBy,
         split_type: splitType,
-        split: splitType === 'equal' ? [] : split,
+        custom_split: splitType === 'equal' ? [] : split,
       })
       toast({ variant: 'success', title: 'Expense added' })
       onOpenChange?.(false)
