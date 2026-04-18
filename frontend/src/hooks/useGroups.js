@@ -6,7 +6,18 @@ import { normalizeGroup, normalizeList } from '@/lib/normalize'
 export function useGroups() {
   return useQuery({
     queryKey: qk.groups,
-    queryFn: async () => normalizeList((await api.get('/groups')).data).map(normalizeGroup),
+    queryFn: async () => {
+      const groups = normalizeList((await api.get('/groups')).data).map(normalizeGroup)
+      if (!groups.some((g) => g?.net_cents == null)) return groups
+
+      const meBalances = (await api.get('/me/balances')).data
+      const netByGroup = new Map(
+        (meBalances?.by_group || []).map((row) => [row.group_id, row.net_cents ?? 0]),
+      )
+      return groups.map((g) =>
+        g?.net_cents == null ? { ...g, net_cents: netByGroup.get(g.id) ?? 0 } : g,
+      )
+    },
   })
 }
 

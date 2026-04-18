@@ -180,7 +180,7 @@ export function DashboardPage() {
           <QuickAction
             icon={CreditCard}
             label="Payment"
-            onClick={() => toast({ title: 'Feature not available in demo' })}
+            onClick={() => navigate('/payment')}
           />
           <QuickAction icon={Building2} label="ATM" onClick={stub} />
           <QuickAction icon={RefreshCw} label="Standing" onClick={stub} />

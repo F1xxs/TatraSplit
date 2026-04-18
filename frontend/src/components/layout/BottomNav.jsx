@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, ArrowLeftRight, LayoutGrid, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toaster'
@@ -10,10 +10,11 @@ const navItems = [
 ]
 
 export function BottomNav() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   function handlePayment() {
-    toast({ title: 'Feature not available in demo' })
+    navigate('/payment')
   }
 
   function handleMore() {
