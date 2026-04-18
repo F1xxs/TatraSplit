@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Zap } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Coins, Zap } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar } from '@/components/ui/avatar'
 import { useGroup, useGroupBalances } from '@/hooks/useGroups'
@@ -63,7 +63,7 @@ export function SettleUpPage() {
 
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-(--color-primary)/15 text-(--color-primary) flex items-center justify-center">
-          ⚡
+          <Coins className="h-5 w-5" />
         </div>
         <div>
           <h1 className="text-lg font-semibold">Settle up</h1>
