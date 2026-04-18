@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Reference docs
+
+- Design guidelines: `.claude/DESIGN_GUIDELINES.md`
+- Project plan: `.claude/plan.md`
+
 ## Project
 
 **TatraSplit** — a shared-payments/expense-splitting demo for HackKosice (TatraBank challenge). Users create groups, log expenses, view who owes whom, and settle debts. One hardcoded current user (`@misha`) — no login screen.
