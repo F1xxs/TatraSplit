@@ -4,7 +4,6 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 
 ## Pending
 - task-12: Split buttons on payment rows — `task-12-payment-split-buttons.md`
-- task-14: DB management panel — `task-14-db-management.md`
 - task-15: PWA — installable on mobile — `task-15-pwa.md`
 - task-16: Contacts (view + add) — `task-16-contacts.md`
 - task-17: P2P split with contact — `task-17-p2p-split.md` (depends: task-16)
@@ -15,6 +14,7 @@ All previously planned tasks (01–10) are complete or intentionally skipped.
 ## Done
 - task-01: env hardening
 - task-19: Recurring payments + split recurring
+- task-14: DB management panel
 - task-02: ID normalization (`lib/normalize.js`)
 - task-05: query invalidation helper (`lib/invalidation.js`)
 - task-06: mock modularization
