@@ -161,18 +161,28 @@ function Row({ first, children }) {
 function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid, onPay, isPending, showPay }) {
   return (
     <div className="p-4 space-y-3">
-      <div className="flex items-center gap-3">
-        <Avatar name={from?.display_name} color={from?.color} size="md" />
-        <div className="flex flex-col items-center gap-0.5 shrink-0 mx-1">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <Avatar name={from?.display_name} color={from?.color} size="md" />
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">from</div>
+            <div className="text-sm font-semibold leading-tight break-words whitespace-normal">{from?.display_name}</div>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-center gap-0.5 shrink-0 px-1">
           <ArrowRight className="h-4 w-4" style={{ color: amountColor }} />
-          <div className="text-sm font-bold tabular-nums" style={{ color: amountColor }}>
+          <div className="text-sm font-bold tabular-nums whitespace-nowrap" style={{ color: amountColor }}>
             {formatMoney(amountCents, currency)}
           </div>
         </div>
-        <Avatar name={to?.display_name} color={to?.color} size="md" />
-        <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate">{to?.display_name}</div>
-          <div className="text-xs text-muted-foreground truncate">{to?.handle}</div>
+
+        <div className="flex items-center gap-2 min-w-0 justify-self-end w-full">
+          <Avatar name={to?.display_name} color={to?.color} size="md" />
+          <div className="min-w-0">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">to</div>
+            <div className="text-sm font-semibold leading-tight break-words whitespace-normal">{to?.display_name}</div>
+          </div>
         </div>
       </div>
 
@@ -207,20 +217,20 @@ function TransferCard({ from, to, amountCents, currency, amountColor, onMarkPaid
 
 function OtherRow({ from, to, amountCents, currency }) {
   return (
-    <div className="p-4 flex items-center gap-3 opacity-60">
-      <Avatar name={from?.display_name} color={from?.color} size="sm" />
-      <div className="min-w-0">
-        <div className="text-xs text-muted-foreground truncate">{from?.display_name}</div>
+    <div className="p-4 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 opacity-60">
+      <div className="flex items-center gap-2 min-w-0">
+        <Avatar name={from?.display_name} color={from?.color} size="sm" />
+        <div className="min-w-0 text-xs text-muted-foreground leading-tight break-words whitespace-normal">{from?.display_name}</div>
       </div>
       <div className="flex flex-col items-center gap-0.5 shrink-0 mx-1">
         <ArrowRight className="h-3 w-3 text-muted-foreground" />
-        <div className="text-xs font-semibold tabular-nums text-muted-foreground">
+        <div className="text-xs font-semibold tabular-nums text-muted-foreground whitespace-nowrap">
           {formatMoney(amountCents, currency)}
         </div>
       </div>
-      <Avatar name={to?.display_name} color={to?.color} size="sm" />
-      <div className="min-w-0">
-        <div className="text-xs text-muted-foreground truncate">{to?.display_name}</div>
+      <div className="flex items-center gap-2 min-w-0 justify-self-end w-full">
+        <Avatar name={to?.display_name} color={to?.color} size="sm" />
+        <div className="min-w-0 text-xs text-muted-foreground leading-tight break-words whitespace-normal">{to?.display_name}</div>
       </div>
     </div>
   )
