@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Avatar } from '@/components/ui/avatar'
 import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, distributeEqual } from '@/components/shared/SplitEditor'
+import { SplitEditor } from '@/components/shared/SplitEditor'
 import { useGroup } from '@/hooks/useGroups'
 import { useAddExpense } from '@/hooks/useMutations'
 import { useMe } from '@/hooks/useMe'
@@ -15,6 +15,7 @@ import { CATEGORIES, formatMoney } from '@/lib/format'
 import { useToast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
+import { distributeEqualSplit, getCustomSplitBudgetStatus, isSplitReady, resolveSplitPayload } from '@/lib/split'
 
 export function AddExpensePage() {
   const { id } = useParams()
@@ -53,7 +54,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
   const { toast } = useToast()
 
   const [amount, setAmount] = useState(initialAmount)
-  const [description, setDescription] = useState(initialDescription)
+  const [description, setDescription] = useState(initialDescription || 'Food')
   const [category, setCategory] = useState('food')
   const [splitType, setSplitType] = useState('equal')
   const [split, setSplit] = useState([])
@@ -68,7 +69,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
   useEffect(() => {
     if (open) {
       setAmount(initialAmount)
-      setDescription(initialDescription)
+      setDescription(initialDescription || 'Food')
       setCategory('food')
       setSplitType('equal')
       setSplit([])
@@ -80,7 +81,7 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
 
   useEffect(() => {
     if (open && splitType === 'equal' && members.length && amount > 0) {
-      setSplit(distributeEqual(amount, members.map((m) => m.id)))
+      setSplit(distributeEqualSplit(amount, members.map((m) => m.id)))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, splitType, amount, members.length])
@@ -134,13 +135,32 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
     if (amount <= 0) return false
     if (!description.trim()) return false
     if (!me?.id) return false
-    if (!split.length) return false
-    if (splitType === 'custom') {
-      const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
-      if (sum !== amount) return false
-    }
+    if (!isSplitReady({ splitType, split, amountCents: amount })) return false
     return true
   }, [amount, description, me, split, splitType])
+  const splitBudgetStatus = useMemo(
+    () => getCustomSplitBudgetStatus({ splitType, split, amountCents: amount }),
+    [splitType, split, amount],
+  )
+  const splitGuidance = useMemo(() => {
+    if (splitType !== 'custom' || amount <= 0) return null
+    if (splitBudgetStatus.state === 'exact') {
+      return {
+        tone: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
+        text: 'Split is exact. Ready to save.',
+      }
+    }
+    if (splitBudgetStatus.state === 'under') {
+      return {
+        tone: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
+        text: `${formatMoney(splitBudgetStatus.remainderCents, group?.currency || 'EUR')} left to assign before saving.`,
+      }
+    }
+    return {
+      tone: 'text-[var(--color-destructive)] bg-[var(--color-destructive)]/10',
+      text: `${formatMoney(splitBudgetStatus.remainderCents, group?.currency || 'EUR')} over budget. Reduce shares to continue.`,
+    }
+  }, [splitType, amount, splitBudgetStatus, group?.currency])
 
   const receiptSplit = receiptData ? computeReceiptSplit(receiptData.items, assignments) : []
   const receiptTotal = receiptSplit.reduce((a, s) => a + s.share_cents, 0)
@@ -149,17 +169,18 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
 
   const submit = async () => {
     try {
-      const allMemberIds = members.map((m) => m.id).sort().join(',')
-      const splitMemberIds = split.map((s) => s.user_id).sort().join(',')
-      const isPartialEqual = splitType === 'equal' && allMemberIds !== splitMemberIds
+      const splitPayload = resolveSplitPayload({
+        splitType,
+        split,
+        allMemberIds: members.map((m) => m.id),
+      })
       await addExpense.mutateAsync({
         description: description.trim(),
         category,
         amount_cents: amount,
         currency: group?.currency || 'EUR',
         paid_by: me.id,
-        split_type: isPartialEqual ? 'custom' : splitType,
-        custom_split: splitType === 'equal' && !isPartialEqual ? [] : split,
+        ...splitPayload,
       })
       toast({ variant: 'success', title: 'Expense added' })
       onOpenChange?.(false)
@@ -316,7 +337,14 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
                 {CATEGORIES.map((c) => {
                   const active = category === c.id
                   return (
-                    <button key={c.id} type="button" onClick={() => setCategory(c.id)}
+                    <button key={c.id} type="button" onClick={() => {
+                      setCategory(c.id)
+                      setDescription((prev) => {
+                        const isDefault = CATEGORIES.some((cat) => cat.label === prev)
+                        if (!prev.trim() || isDefault) return c.label
+                        return prev
+                      })
+                    }}
                       className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-all',
                         active ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15 text-[var(--color-foreground)]'
                                : 'border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]')}>
@@ -331,15 +359,24 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
               <Label>Split between</Label>
               <div className="mt-2">
                 <SplitEditor members={members} amountCents={amount} currency={group?.currency || 'EUR'}
-                  splitType={splitType} onSplitTypeChange={setSplitType} split={split} onSplitChange={setSplit} />
+                  splitType={splitType} onSplitTypeChange={setSplitType} split={split} onSplitChange={setSplit} payerId={me?.id} />
               </div>
+              {splitGuidance && (
+                <div className={cn('mt-2 rounded-lg px-3 py-2 text-xs', splitGuidance.tone)}>
+                  {splitGuidance.text}
+                </div>
+              )}
             </div>
           </SheetContent>
 
           <SheetFooter>
             <Button variant="ghost" onClick={() => onOpenChange?.(false)}>Cancel</Button>
             <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
-              {addExpense.isPending ? 'Saving…' : 'Confirm'}
+              {addExpense.isPending
+                ? 'Saving…'
+                : splitType === 'custom' && splitBudgetStatus.state !== 'exact'
+                  ? 'Fix split to continue'
+                  : 'Confirm'}
             </Button>
           </SheetFooter>
         </>

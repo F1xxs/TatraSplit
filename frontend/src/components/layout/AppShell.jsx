@@ -96,11 +96,12 @@ export function AppShell() {
 
     {/* Mobile account switcher sheet */}
     {mobileSwitcherOpen && (
-      <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setMobileSwitcherOpen(false)}>
+      <div className="lg:hidden fixed inset-0 z-[80] flex flex-col justify-end" onClick={() => setMobileSwitcherOpen(false)}>
         <div className="absolute inset-0 bg-black/40" />
-        <div className="relative bg-[var(--color-card)] rounded-t-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-1" onClick={(e) => e.stopPropagation()}>
+        <div className="relative bg-[var(--color-card)] rounded-t-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+5rem)]" onClick={(e) => e.stopPropagation()}>
           <div className="w-10 h-1 rounded-full bg-[var(--color-border)] mx-auto mb-4" />
           <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] px-3 mb-2">Demo accounts</div>
+          <div className="max-h-[50vh] overflow-y-auto space-y-1">
           {demoAccounts.map((account) => (
             <button
               key={account.handle}
@@ -118,6 +119,7 @@ export function AppShell() {
               )}
             </button>
           ))}
+          </div>
         </div>
       </div>
     )}
@@ -202,7 +204,7 @@ export function AppShell() {
                 role="menu"
                 aria-label="Switch demo account"
                 className={cn(
-                  'absolute bottom-full left-0 z-40 mb-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl',
+                  'absolute bottom-full left-0 z-40 mb-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-1 shadow-xl max-h-72 overflow-y-auto',
                   accountMenuOpen ? 'block' : 'hidden',
                 )}
               >

@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Check, CheckCircle2, Loader2, Search, Send, SplitSquareHorizontal } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, Loader2, MoreHorizontal, Receipt, Repeat, RotateCcw, Search, Send, Share2, SplitSquareHorizontal } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, distributeEqual } from '@/components/shared/SplitEditor'
+import { SplitEditor } from '@/components/shared/SplitEditor'
 import { useMe } from '@/hooks/useMe'
 import { useGroups, useUsers } from '@/hooks/useGroups'
 import { usePayment, usePaymentExpense } from '@/hooks/useMutations'
 import { formatMoney, CATEGORIES } from '@/lib/format'
 import { useToast } from '@/components/ui/toaster'
 import { cn } from '@/lib/utils'
+import { distributeEqualSplit, getCustomSplitBudgetStatus, isSplitReady, resolveSplitPayload } from '@/lib/split'
+
+function genTxRef() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
 
 export function PaymentPage() {
   const navigate = useNavigate()
@@ -126,19 +132,38 @@ export function PaymentPage() {
     if (!description.trim()) return false
     if (!me?.id) return false
     if (splitMembers.length < 2) return false
-    if (!split.length) return false
-    if (splitType === 'custom') {
-      const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
-      if (sum !== amountCents) return false
-    }
+    if (!isSplitReady({ splitType, split, amountCents })) return false
     return true
   }, [amountCents, description, me, splitMembers, split, splitType])
+  const splitBudgetStatus = useMemo(
+    () => getCustomSplitBudgetStatus({ splitType, split, amountCents }),
+    [splitType, split, amountCents],
+  )
+  const splitGuidance = useMemo(() => {
+    if (mode !== 'split' || splitType !== 'custom' || splitMembers.length < 2 || amountCents <= 0) return null
+    const activeCurrency = selectedGroup?.currency || currency
+    if (splitBudgetStatus.state === 'exact') {
+      return {
+        tone: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
+        text: 'Split is exact. Ready to continue.',
+      }
+    }
+    if (splitBudgetStatus.state === 'under') {
+      return {
+        tone: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
+        text: `${formatMoney(splitBudgetStatus.remainderCents, activeCurrency)} left to assign before continuing.`,
+      }
+    }
+    return {
+      tone: 'text-[var(--color-destructive)] bg-[var(--color-destructive)]/10',
+      text: `${formatMoney(splitBudgetStatus.remainderCents, activeCurrency)} over budget. Reduce shares to continue.`,
+    }
+  }, [mode, splitType, splitMembers.length, amountCents, splitBudgetStatus, selectedGroup?.currency, currency])
 
   // Auto-update split when members/amount changes in equal mode
   useEffect(() => {
     if (mode === 'split' && splitType === 'equal' && splitMembers.length > 0 && amountCents > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSplit(distributeEqual(amountCents, splitMembers.map((m) => m.id)))
+      setSplit(distributeEqualSplit(amountCents, splitMembers.map((m) => m.id)))
     }
   }, [mode, splitType, amountCents, splitMembers.length]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -175,8 +200,20 @@ export function PaymentPage() {
       })
       const elapsed = Date.now() - startedAt
       if (elapsed < 1200) await new Promise((r) => setTimeout(r, 1200 - elapsed))
-      setLastResult(result)
-      setStep('success')
+      navigate('/activity/receipt', {
+        state: {
+          from_name: me.display_name,
+          to_name: recipient.display_name,
+          from_user: meId,
+          to_user: recipient.id,
+          amount_cents: amountCents,
+          currency,
+          note: note.trim(),
+          settlement_id: result.settlement?.id,
+          group_id: result.group_id,
+          created_at: new Date().toISOString(),
+        },
+      })
     } catch (error) {
       setStep('confirm')
       toast({ variant: 'error', title: 'Payment failed', description: error?.message || 'Could not process payment.' })
@@ -197,6 +234,14 @@ export function PaymentPage() {
       toast({ variant: 'error', title: 'Add participants', description: 'Select at least one other person to split with.' })
       return
     }
+    if (splitType === 'custom' && splitBudgetStatus.state !== 'exact') {
+      const activeCurrency = selectedGroup?.currency || currency
+      const msg = splitBudgetStatus.state === 'under'
+        ? `${formatMoney(splitBudgetStatus.remainderCents, activeCurrency)} is still unassigned.`
+        : `${formatMoney(splitBudgetStatus.remainderCents, activeCurrency)} is over budget.`
+      toast({ variant: 'error', title: 'Fix split first', description: msg })
+      return
+    }
     setStep('confirm')
   }
 
@@ -205,6 +250,11 @@ export function PaymentPage() {
     setStep('processing')
     const startedAt = Date.now()
     try {
+      const splitPayload = resolveSplitPayload({
+        splitType,
+        split,
+        allMemberIds: splitMembers.map((m) => m.id),
+      })
       const result = await paymentExpense.mutateAsync({
         group_id: selectedGroupId || undefined,
         participant_handles: selectedGroup
@@ -214,13 +264,13 @@ export function PaymentPage() {
         currency: selectedGroup?.currency || currency,
         description: description.trim(),
         category,
-        split_type: splitType,
-        custom_split: splitType === 'equal' ? [] : split,
+        ...splitPayload,
         paid_by: me.id,
       })
       const elapsed = Date.now() - startedAt
       if (elapsed < 1200) await new Promise((r) => setTimeout(r, 1200 - elapsed))
       setLastResult(result)
+      setTxRef(genTxRef())
       setStep('success')
     } catch (error) {
       setStep('confirm')
@@ -247,6 +297,8 @@ export function PaymentPage() {
   }
 
   const resultGroupId = lastResult?.group_id
+
+  const [txRef, setTxRef] = useState('')
 
   return (
     <div className="space-y-4">
@@ -462,7 +514,13 @@ export function PaymentPage() {
                     onSplitTypeChange={(t) => { setSplitType(t); setSplit([]) }}
                     split={split}
                     onSplitChange={setSplit}
+                    payerId={me?.id}
                   />
+                  {splitGuidance && (
+                    <div className={cn('rounded-lg px-3 py-2 text-xs', splitGuidance.tone)}>
+                      {splitGuidance.text}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -472,7 +530,9 @@ export function PaymentPage() {
                 onClick={handleSplitContinue}
                 disabled={!splitCanContinue}
               >
-                Continue
+                {splitType === 'custom' && splitBudgetStatus.state !== 'exact'
+                  ? 'Fix split to continue'
+                  : 'Continue'}
               </Button>
             </>
           )}
@@ -560,39 +620,161 @@ export function PaymentPage() {
 
       {/* ── SUCCESS step ────────────────────────────────────────────────────── */}
       {step === 'success' && (
-        <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <CheckCircle2 className="h-10 w-10 text-[var(--color-success)]" />
-            <h2 className="text-lg font-semibold">
-              {mode === 'send' ? 'Payment successful' : 'Expense added'}
-            </h2>
-            {mode === 'send' && recipient && (
+        <section className="space-y-3">
+          {/* Hero card */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              {/* Animated checkmark */}
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success)]/15 border border-[var(--color-success)]/30">
+                <CheckCircle2 className="h-9 w-9 text-[var(--color-success)]" style={{ animation: 'successPop 0.35s cubic-bezier(0.34,1.56,0.64,1) both' }} />
+              </div>
+              <style>{`@keyframes successPop { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
+
+              <h2 className="text-xl font-semibold">
+                {mode === 'send' ? 'Payment sent' : 'Expense added'}
+              </h2>
+
+              {/* Avatar row */}
+              <div className="flex items-center gap-3">
+                {mode === 'send' ? (
+                  <>
+                    <div className="flex flex-col items-center gap-1">
+                      <Avatar name={me?.display_name} color={me?.color} size="md" />
+                      <span className="text-xs text-[var(--color-muted-foreground)] max-w-[72px] truncate">{me?.display_name}</span>
+                    </div>
+                    <ArrowRight className="h-5 w-5 text-[var(--color-muted-foreground)] shrink-0" />
+                    <div className="flex flex-col items-center gap-1">
+                      <Avatar name={recipient?.display_name} color={recipient?.color} size="md" />
+                      <span className="text-xs text-[var(--color-muted-foreground)] max-w-[72px] truncate">{recipient?.display_name}</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex -space-x-2">
+                      {splitMembers.slice(0, 4).map((m) => (
+                        <Avatar key={m.id} name={m.display_name} color={m.color} size="md" />
+                      ))}
+                      {splitMembers.length > 4 && (
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] text-xs font-semibold">
+                          +{splitMembers.length - 4}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-[var(--color-muted-foreground)]">
+                      Split among {splitMembers.length} people
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Large amount */}
+              <div className="text-4xl font-bold tabular-nums">
+                {formatMoney(amountCents, selectedGroup?.currency || currency)}
+              </div>
+
+              {/* Subtitle */}
               <p className="text-sm text-[var(--color-muted-foreground)]">
-                Sent {formatMoney(amountCents, currency)} to {recipient.display_name}.
+                {mode === 'send' && recipient
+                  ? `To: ${recipient.display_name} · Today ${new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+                  : `Split among ${splitMembers.length} people · Today ${new Date().toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit' })}`}
               </p>
+            </div>
+          </div>
+
+          {/* Quick action row */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-4">
+            <div className="flex items-start justify-around gap-1">
+              {/* Share */}
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toast({ title: 'Share', description: 'Sharing not available in demo.' })}
+                  className="w-14 h-14 rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors"
+                >
+                  <Share2 className="h-5 w-5 text-[var(--color-foreground)]" />
+                </button>
+                <span className="text-xs text-[var(--color-muted-foreground)]">Share</span>
+              </div>
+              {/* Again */}
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleMakeAnother}
+                  className="w-14 h-14 rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors"
+                >
+                  <RotateCcw className="h-5 w-5 text-[var(--color-foreground)]" />
+                </button>
+                <span className="text-xs text-[var(--color-muted-foreground)]">Again</span>
+              </div>
+              {/* Check */}
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => navigate('/activity')}
+                  className="w-14 h-14 rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors"
+                >
+                  <Receipt className="h-5 w-5 text-[var(--color-foreground)]" />
+                </button>
+                <span className="text-xs text-[var(--color-muted-foreground)]">Check</span>
+              </div>
+              {/* Recurring */}
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (resultGroupId) navigate(`/groups/${resultGroupId}`)
+                    else toast({ title: 'Recurring', description: 'Associate this expense with a group to set up recurring payments.' })
+                  }}
+                  className="w-14 h-14 rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors"
+                >
+                  <Repeat className="h-5 w-5 text-[var(--color-foreground)]" />
+                </button>
+                <span className="text-xs text-[var(--color-muted-foreground)]">Recurring</span>
+              </div>
+              {/* More */}
+              <div className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => toast({ title: 'More options', description: 'More options coming soon.' })}
+                  className="w-14 h-14 rounded-full bg-[var(--color-card-elevated)] border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-secondary)] transition-colors"
+                >
+                  <MoreHorizontal className="h-5 w-5 text-[var(--color-foreground)]" />
+                </button>
+                <span className="text-xs text-[var(--color-muted-foreground)]">More</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Transaction details card */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-4 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)]">
+              Transaction details
+            </div>
+            <ConfirmRow label="Reference" value={`REF-${txRef}`} mono />
+            <ConfirmRow label="Status" value="Completed" />
+            <ConfirmRow
+              label="Date"
+              value={new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            />
+            {mode === 'send' && note.trim() && (
+              <ConfirmRow label="Note" value={note.trim()} />
             )}
             {mode === 'split' && (
-              <p className="text-sm text-[var(--color-muted-foreground)]">
-                {formatMoney(amountCents, selectedGroup?.currency || currency)} split among {splitMembers.length} people.
-              </p>
+              <ConfirmRow
+                label="Category"
+                value={CATEGORIES.find((c) => c.id === category)?.label || category}
+              />
             )}
+          </div>
 
-            <div className="grid w-full max-w-sm gap-2 pt-2">
-              <Button onClick={() => navigate('/activity')}>View activity</Button>
-              {resultGroupId && (
-                <Button variant="outline" onClick={() => navigate(`/groups/${resultGroupId}`)}>
-                  Open group
-                </Button>
-              )}
-              {mode === 'split' && resultGroupId && (
-                <Button variant="ghost" onClick={() => navigate(`/groups/${resultGroupId}`)}>
-                  Set up as recurring
-                </Button>
-              )}
-              <Button variant={mode === 'split' && resultGroupId ? 'ghost' : 'outline'} onClick={handleMakeAnother}>
-                {mode === 'send' ? 'Make another payment' : 'Add another expense'}
+          {/* Primary actions */}
+          <div className="grid gap-2">
+            <Button onClick={() => navigate('/activity')}>View activity</Button>
+            {resultGroupId && (
+              <Button variant="outline" onClick={() => navigate(`/groups/${resultGroupId}`)}>
+                Open group
               </Button>
-            </div>
+            )}
           </div>
         </section>
       )}

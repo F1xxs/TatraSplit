@@ -1,21 +1,13 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Avatar } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/format'
+import { distributeEqualSplit, applyCustomShareEdit } from '@/lib/split'
 
-// Distributes amount_cents evenly across included members with deterministic remainder.
 // eslint-disable-next-line react-refresh/only-export-components
-export function distributeEqual(amountCents, memberIds) {
-  const n = memberIds.length
-  if (n === 0) return []
-  const base = Math.floor(amountCents / n)
-  const rem = amountCents - base * n
-  return memberIds.map((id, i) => ({
-    user_id: id,
-    share_cents: base + (i < rem ? 1 : 0),
-  }))
-}
+export const distributeEqual = distributeEqualSplit
 
 export function SplitEditor({
   members,
@@ -25,41 +17,105 @@ export function SplitEditor({
   onSplitTypeChange,
   split,
   onSplitChange,
+  payerId,
 }) {
+  const memberIds = members.map((m) => m.id)
+  const memberIdsKey = memberIds.join(',')
   const includedIds = split.map((s) => s.user_id)
   const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
   const remainder = amountCents - sum
+  const canShowQuickActions = splitType === 'custom' && members.length >= 3
+  const payerShare = split.find((s) => s.user_id === payerId)?.share_cents ?? 0
+  const canAssignToPayer = Boolean(payerId) && memberIds.includes(payerId) && payerShare + remainder >= 0
 
   const setIncluded = (id, included) => {
     let next
     if (included) {
       const ids = [...includedIds, id]
-      next = distributeEqual(amountCents, ids)
+      next = distributeEqualSplit(amountCents, ids)
     } else {
       const ids = includedIds.filter((x) => x !== id)
-      next = distributeEqual(amountCents, ids)
+      next = distributeEqualSplit(amountCents, ids)
     }
     onSplitChange(next)
   }
 
   const setCustomShare = (id, cents) => {
-    const existing = split.find((s) => s.user_id === id)
-    let next
-    if (!existing) {
-      next = [...split, { user_id: id, share_cents: cents }]
-    } else {
-      next = split.map((s) => (s.user_id === id ? { ...s, share_cents: cents } : s))
+    onSplitChange(applyCustomShareEdit({ split, userId: id, cents, amountCents }))
+  }
+
+  const withAllMembers = useMemo(
+    () =>
+      members.map((m) => ({
+        user_id: m.id,
+        share_cents: split.find((s) => s.user_id === m.id)?.share_cents ?? 0,
+      })),
+    [members, split],
+  )
+
+  const resetToEqual = () => {
+    onSplitChange(distributeEqualSplit(amountCents, memberIds))
+  }
+
+  const autoFixRemainder = () => {
+    if (remainder === 0) return
+    let left = remainder
+    const next = withAllMembers.map((s) => ({ ...s }))
+
+    if (left > 0) {
+      let i = 0
+      while (left > 0) {
+        const idx = i % next.length
+        next[idx].share_cents += 1
+        left -= 1
+        i += 1
+      }
+      onSplitChange(next)
+      return
     }
+
+    left = Math.abs(left)
+    while (left > 0) {
+      let changed = false
+      for (let i = 0; i < next.length && left > 0; i += 1) {
+        if (next[i].share_cents > 0) {
+          next[i].share_cents -= 1
+          left -= 1
+          changed = true
+        }
+      }
+      if (!changed) break
+    }
+    onSplitChange(next)
+  }
+
+  const assignRemainderToPayer = () => {
+    if (!canAssignToPayer || remainder === 0) return
+    const next = withAllMembers.map((s) =>
+      s.user_id === payerId ? { ...s, share_cents: s.share_cents + remainder } : s,
+    )
     onSplitChange(next)
   }
 
   // Recompute equal on amount change when in equal mode
   const includedIdsKey = includedIds.join(',')
   const recomputedEqual = useMemo(
-    () => distributeEqual(amountCents, includedIds),
+    () => distributeEqualSplit(amountCents, includedIds),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [amountCents, includedIdsKey],
   )
+  const twoPersonEqual = useMemo(
+    () => (members.length === 2 ? distributeEqualSplit(amountCents, memberIds) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [amountCents, members.length, memberIdsKey],
+  )
+
+  // In 2-person custom split, default to equal values if split is not initialized.
+  useEffect(() => {
+    if (splitType !== 'custom' || members.length !== 2) return
+    const hasBothMembers = split.length === 2 && memberIds.every((id) => split.some((s) => s.user_id === id))
+    if (!hasBothMembers) onSplitChange(twoPersonEqual)
+  }, [splitType, members.length, split, memberIds, twoPersonEqual, onSplitChange])
 
   return (
     <div className="space-y-3">
@@ -68,6 +124,7 @@ export function SplitEditor({
         onValueChange={(v) => {
           onSplitTypeChange(v)
           if (v === 'equal') onSplitChange(recomputedEqual)
+          if (v === 'custom' && members.length === 2) onSplitChange(twoPersonEqual)
         }}
       >
         <TabsList>
@@ -151,33 +208,79 @@ export function SplitEditor({
             })}
           </div>
 
-          <RemainderBar remainder={remainder} currency={currency} />
+          <RemainderBar
+            remainder={remainder}
+            currency={currency}
+            showQuickActions={canShowQuickActions}
+            canAssignToPayer={canAssignToPayer}
+            onAutoFixRemainder={autoFixRemainder}
+            onAssignRemainderToPayer={assignRemainderToPayer}
+            onResetToEqual={resetToEqual}
+          />
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-function RemainderBar({ remainder, currency }) {
+function RemainderBar({
+  remainder,
+  currency,
+  showQuickActions,
+  canAssignToPayer,
+  onAutoFixRemainder,
+  onAssignRemainderToPayer,
+  onResetToEqual,
+}) {
   const exact = Math.abs(remainder) < 1
+  const guidance = exact
+    ? 'Split is balanced. You can submit now.'
+    : remainder > 0
+      ? 'Allocate the remaining amount, or use a quick action below.'
+      : 'Reduce shares to match the total, or use a quick action below.'
   return (
-    <div
-      className={cn(
-        'mt-3 rounded-lg px-3 py-2 text-sm flex items-center justify-between',
-        exact
-          ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
-          : remainder > 0
-            ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
-            : 'bg-[var(--color-destructive)]/10 text-[var(--color-destructive)]',
+    <div className="mt-3 space-y-2">
+      <div
+        className={cn(
+          'rounded-lg px-3 py-2 text-sm flex items-center justify-between',
+          exact
+            ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
+            : remainder > 0
+              ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
+              : 'bg-[var(--color-destructive)]/10 text-[var(--color-destructive)]',
+        )}
+      >
+        <span>
+          {exact
+            ? '✓ Shares add up exactly'
+            : remainder > 0
+              ? `${formatMoney(remainder, currency)} left to assign`
+              : `${formatMoney(Math.abs(remainder), currency)} over budget`}
+        </span>
+      </div>
+      <p className="px-1 text-xs text-[var(--color-muted-foreground)]">
+        {showQuickActions || exact ? guidance : guidance.replace(', or use a quick action below.', '.')}
+      </p>
+
+      {showQuickActions && (
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={onAutoFixRemainder} disabled={exact}>
+            Auto-fix remainder
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onAssignRemainderToPayer}
+            disabled={exact || !canAssignToPayer}
+          >
+            Assign remainder to payer
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onResetToEqual}>
+            Reset to equal
+          </Button>
+        </div>
       )}
-    >
-      <span>
-        {exact
-          ? '✓ Shares add up exactly'
-          : remainder > 0
-            ? `${formatMoney(remainder, currency)} left to assign`
-            : `${formatMoney(Math.abs(remainder), currency)} over budget`}
-      </span>
     </div>
   )
 }

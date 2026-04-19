@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toaster'
 import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, distributeEqual } from '@/components/shared/SplitEditor'
+import { SplitEditor } from '@/components/shared/SplitEditor'
 import { ExpenseRow } from '@/components/shared/ExpenseRow'
 import { BalancePill } from '@/components/shared/BalancePill'
 import { CategoryDonut, CategoryLegend } from '@/components/shared/CategoryDonut'
@@ -45,6 +45,7 @@ import { useAddContact, useContacts, useUserSearch } from '@/hooks/useContacts'
 import { formatMoney, CATEGORIES } from '@/lib/format'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { distributeEqualSplit, getCustomSplitBudgetStatus, isSplitReady, resolveSplitPayload } from '@/lib/split'
 
 export function GroupDetailPage() {
   const { id } = useParams()
@@ -181,13 +182,26 @@ export function GroupDetailPage() {
 
   return (
     <div className="space-y-4">
-      <Link
-        to="/groups"
-        className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Groups
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/groups"
+          className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Groups
+        </Link>
+        {isCreator && (
+          <button
+            type="button"
+            onClick={openDeleteDialog}
+            disabled={deleteGroup.isPending || !canDeleteMoneybox}
+            aria-label="Delete group"
+            className="p-2 rounded-lg text-[var(--color-muted-foreground)] hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       {/* Account-detail style header card */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-5">
@@ -237,23 +251,6 @@ export function GroupDetailPage() {
         </div>
       )}
 
-      {isCreator && (
-        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">{group?.jar_mode ? 'Delete this Moneybox' : 'Delete this group'}</div>
-              <p className="text-xs text-[var(--color-muted-foreground)]">
-                {group?.jar_mode
-                  ? `This permanently removes this Moneybox. Available balance: ${formatMoney(moneyboxBalanceCents, group?.currency || 'EUR')}.`
-                  : 'This permanently removes all expenses, settlements, and activity for this group.'}
-              </p>
-            </div>
-            <Button size="sm" onClick={openDeleteDialog} disabled={deleteGroup.isPending || !canDeleteMoneybox}>
-              {group?.jar_mode ? 'Delete Moneybox' : 'Delete group'}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Tabs — Moneybox groups skip the tab chrome and render moneybox content directly */}
       {group?.jar_mode ? (
@@ -1029,31 +1026,55 @@ function AddRecurringSheet({ open, onOpenChange, group, initial = null, onCreate
 
   useEffect(() => {
     if (open && !initial && splitType === 'equal' && members.length && amount > 0) {
-      setSplit(distributeEqual(amount, members.map((m) => m.id)))
+      setSplit(distributeEqualSplit(amount, members.map((m) => m.id)))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, splitType, amount, members.length])
 
   const canSubmit = useMemo(() => {
-    if (amount <= 0 || !title.trim() || !me?.id || !split.length) return false
-    if (splitType === 'custom') {
-      const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
-      if (sum !== amount) return false
-    }
+    if (amount <= 0 || !title.trim() || !me?.id) return false
+    if (!isSplitReady({ splitType, split, amountCents: amount })) return false
     return true
   }, [amount, title, me, split, splitType])
+  const splitBudgetStatus = useMemo(
+    () => getCustomSplitBudgetStatus({ splitType, split, amountCents: amount }),
+    [splitType, split, amount],
+  )
+  const splitGuidance = useMemo(() => {
+    if (splitType !== 'custom' || amount <= 0) return null
+    if (splitBudgetStatus.state === 'exact') {
+      return {
+        tone: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
+        text: 'Split is exact. Ready to save.',
+      }
+    }
+    if (splitBudgetStatus.state === 'under') {
+      return {
+        tone: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
+        text: `${formatMoney(splitBudgetStatus.remainderCents, currency)} left to assign before saving.`,
+      }
+    }
+    return {
+      tone: 'text-[var(--color-destructive)] bg-[var(--color-destructive)]/10',
+      text: `${formatMoney(splitBudgetStatus.remainderCents, currency)} over budget. Reduce shares to continue.`,
+    }
+  }, [splitType, amount, splitBudgetStatus, currency])
 
   const isPending = isEdit ? onUpdate?.isPending : onCreate?.isPending
 
   const submit = async () => {
+    const splitPayload = resolveSplitPayload({
+      splitType,
+      split,
+      forceCustom: true,
+    })
     const payload = {
       title: title.trim(),
       amount_cents: amount,
       currency,
       category,
       paid_by: me.id,
-      split_type: 'custom',
-      custom_split: split.map(s => ({ user_id: s.user_id, share_cents: s.share_cents })),
+      ...splitPayload,
       frequency,
     }
     try {
@@ -1150,15 +1171,27 @@ function AddRecurringSheet({ open, onOpenChange, group, initial = null, onCreate
               onSplitTypeChange={setSplitType}
               split={split}
               onSplitChange={setSplit}
+              payerId={me?.id}
             />
           </div>
+          {splitGuidance && (
+            <div className={cn('mt-2 rounded-lg px-3 py-2 text-xs', splitGuidance.tone)}>
+              {splitGuidance.text}
+            </div>
+          )}
         </div>
       </SheetContent>
 
       <SheetFooter>
         <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
         <Button onClick={submit} disabled={!canSubmit || isPending}>
-          {isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Confirm'}
+          {isPending
+            ? 'Saving…'
+            : splitType === 'custom' && splitBudgetStatus.state !== 'exact'
+              ? 'Fix split to continue'
+              : isEdit
+                ? 'Save changes'
+                : 'Confirm'}
         </Button>
       </SheetFooter>
     </Sheet>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
 import { Receipt, HandCoins, UserPlus, Users, Bell, Trash2 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
@@ -132,6 +133,7 @@ export function ActivityItem({ item, className }) {
 export function BankTransactionRow({ item, border, dateLabel }) {
   const { data: me } = useMe()
   const meId = me?.id
+  const navigate = useNavigate()
   const meta = kindMeta[item.kind] || kindMeta['expense.created']
   const Icon = meta.icon
   const ts = item.created_at ? new Date(item.created_at) : new Date()
@@ -139,10 +141,6 @@ export function BankTransactionRow({ item, border, dateLabel }) {
 
   const isSettlement = item.kind === 'settlement.created'
   const isShared = item.payload?.shared === true
-  const [sheetOpen, setSheetOpen] = useState(false)
-
-  const isSent = item.payload?.from_user === meId
-  const rowClickable = isSettlement && !isShared && isSent
 
   return (
     <div>
@@ -152,11 +150,11 @@ export function BankTransactionRow({ item, border, dateLabel }) {
         </div>
       )}
       <div
-        onClick={rowClickable ? () => setSheetOpen(true) : undefined}
+        onClick={isSettlement ? () => navigate(`/activity/${item.id}`) : undefined}
         className={cn(
           'flex items-center gap-3 px-4 py-3.5',
           border && 'border-t border-[var(--color-border)]',
-          rowClickable && 'cursor-pointer hover:bg-[var(--color-secondary)] transition-colors',
+          isSettlement && 'cursor-pointer hover:bg-[var(--color-secondary)] transition-colors',
         )}
       >
         <div
@@ -192,20 +190,11 @@ export function BankTransactionRow({ item, border, dateLabel }) {
           </div>
         </div>
       </div>
-
-      {isSettlement && (
-        <AddToGroupSheet
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          item={item}
-          meId={meId}
-        />
-      )}
     </div>
   )
 }
 
-function AddToGroupSheet({ open, onOpenChange, item, meId }) {
+export function AddToGroupSheet({ open, onOpenChange, item, meId }) {
   const { data: groups = [] } = useGroups()
   const { data: allUsers = [] } = useUsers()
   const createGroup = useCreateGroup()
