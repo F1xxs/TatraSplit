@@ -39,6 +39,7 @@ env/
 node_modules/
 dist/
 dist-ssr/
+package-lock.json
 
 # ── Logs ───────────────────────────────────────────────────────────────────────
 *.log
