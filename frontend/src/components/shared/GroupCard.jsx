@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { BalancePill } from './BalancePill'
 import { cn } from '@/lib/utils'
 
 export function GroupCard({ group, className }) {
+  const location = useLocation()
   const net = group.net_cents ?? 0
   const memberCount = (group.members || []).length
   const isJar = !!group.jar_mode
@@ -18,6 +19,10 @@ export function GroupCard({ group, className }) {
   return (
     <Link
       to={`/groups/${group.id}`}
+      state={{
+        from: `${location.pathname}${location.search}`,
+        fromLabel: location.pathname === '/' ? 'Home' : 'Groups',
+      }}
       className={cn(
         'flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--color-card-elevated)] transition-colors',
         className,

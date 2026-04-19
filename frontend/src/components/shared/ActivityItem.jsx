@@ -23,6 +23,7 @@ const kindMeta = {
   'settlement.created': { icon: HandCoins, color: '#1DB954' },
   'group.created':      { icon: Users,     color: '#0070D2' },
   'member.joined':      { icon: UserPlus,  color: '#0070D2' },
+  'group.member.joined': { icon: UserPlus, color: '#0070D2' },
   'reminder.sent':      { icon: Bell,      color: '#F59E0B' },
   'jar.contributed':    { icon: Receipt,   color: '#F59E0B' },
   'jar.withdrawn':      { icon: HandCoins, color: '#1DB954' },
@@ -43,8 +44,9 @@ function getTitle(item, meId) {
       }
       return `${fromName} paid ${toName}`
     }
-    case 'group.created':     return item.payload?.group_name || 'New group'
-    case 'member.joined':     return `${item.payload?.actor_name || 'Someone'} joined`
+    case 'group.created':     return item.payload?.name || 'New group'
+    case 'member.joined':
+    case 'group.member.joined': return `${item.payload?.display_name || item.payload?.handle || 'Someone'} joined`
     case 'jar.contributed':   return `Contributed to ${item.payload?.group_name || 'Moneybox'}`
     case 'jar.withdrawn':     return 'Withdrew from Moneybox'
     default: return item.kind
@@ -64,6 +66,7 @@ function getSubtitle(item, meId) {
     case 'group.created':
       return 'Group created'
     case 'member.joined':
+    case 'group.member.joined':
       return group || 'Joined group'
     case 'jar.contributed':
       return 'Deposit · ' + (group || 'Shared fund')

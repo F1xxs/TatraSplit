@@ -68,7 +68,7 @@ export function SettleUpPage() {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-(--color-foreground)"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to {group?.name || 'group'}
+        Back
       </Link>
 
       <div className="flex items-center gap-3">

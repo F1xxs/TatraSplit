@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { ArrowLeft, Search, UserPlus, UserMinus, Share2, Copy, Check } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
@@ -17,6 +17,8 @@ import {
 import { useToast } from '@/components/ui/toaster'
 
 export function ContactsPage() {
+  const location = useLocation()
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [inviteOpen, setInviteOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -32,6 +34,8 @@ export function ContactsPage() {
   const contactByUserId = new Map(contacts.map((c) => [c.contact_user_id, c]))
   const searchResults = users.filter((u) => u.id !== me?.id)
   const inviteHandle = searchParams.get('add')?.trim() || ''
+  const backTo = location.state?.from || '/groups'
+  const backState = location.state?.returnState
   const inviteUrl = me?.handle
     ? `${window.location.origin}/contacts?add=${encodeURIComponent(me.handle)}`
     : ''
@@ -104,15 +108,24 @@ export function ContactsPage() {
     }
   }
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate(backTo, { replace: true, state: backState })
+  }
+
   return (
     <div className="space-y-4">
-      <Link
-        to="/groups"
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Groups
-      </Link>
+        Back
+      </button>
 
       <div>
         <div className="flex items-center justify-between gap-2">
