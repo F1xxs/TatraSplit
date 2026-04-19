@@ -9,11 +9,10 @@ export function ExpenseRow({ expense, me, members = [], groupId, className }) {
     me &&
     (expense.split || []).find((s) => s.user_id === me.id)?.share_cents
 
-  const myImpactCents =
-    myShare != null
-      ? paidByMe
-        ? expense.amount_cents - myShare
-        : -myShare
+  const myImpactCents = paidByMe
+    ? expense.amount_cents - (myShare ?? 0)
+    : myShare != null
+      ? -myShare
       : 0
 
   const payer = members.find((m) => m.id === expense.paid_by)
@@ -54,7 +53,7 @@ export function ExpenseRow({ expense, me, members = [], groupId, className }) {
         >
           {isDebit && myImpactCents !== 0 ? '−' : ''}{formatMoney(expense.amount_cents, expense.currency)}
         </div>
-        {myShare != null && myImpactCents !== 0 && (
+        {myImpactCents !== 0 && (me != null) && (
           <div className="text-[10px] text-[var(--color-muted-foreground)] mt-0.5">
             {myImpactCents > 0
               ? `lent ${formatMoney(myImpactCents, expense.currency)}`

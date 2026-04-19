@@ -149,14 +149,17 @@ export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp,
 
   const submit = async () => {
     try {
+      const allMemberIds = members.map((m) => m.id).sort().join(',')
+      const splitMemberIds = split.map((s) => s.user_id).sort().join(',')
+      const isPartialEqual = splitType === 'equal' && allMemberIds !== splitMemberIds
       await addExpense.mutateAsync({
         description: description.trim(),
         category,
         amount_cents: amount,
         currency: group?.currency || 'EUR',
         paid_by: me.id,
-        split_type: splitType,
-        custom_split: splitType === 'equal' ? [] : split,
+        split_type: isPartialEqual ? 'custom' : splitType,
+        custom_split: splitType === 'equal' && !isPartialEqual ? [] : split,
       })
       toast({ variant: 'success', title: 'Expense added' })
       onOpenChange?.(false)

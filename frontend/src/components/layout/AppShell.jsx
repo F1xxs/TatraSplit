@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useGroupInvites } from '@/hooks/useGroups'
 import { InboxSheet } from '@/components/shared/InboxSheet'
+import { PullToRefresh } from '@/components/shared/PullToRefresh'
 
 const navItems = [
   { to: '/',         icon: Home,             label: 'Home',            end: true },
@@ -212,7 +213,9 @@ export function AppShell() {
       <div className="flex flex-col flex-1 min-w-0">
         <TopBar me={activeIdentity} onStub={() => toast({ title: 'Feature not available in demo' })} onInbox={() => setInboxOpen(true)} inviteCount={inviteCount} />
         <main className="flex-1 w-full mx-auto max-w-3xl lg:max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+9.25rem)] pt-4 lg:pb-10 lg:pt-8">
-          <Outlet />
+          <PullToRefresh>
+            <Outlet />
+          </PullToRefresh>
         </main>
         <BottomNav />
       </div>
