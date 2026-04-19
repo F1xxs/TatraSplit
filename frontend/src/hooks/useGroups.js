@@ -75,3 +75,10 @@ export function useUsers() {
     staleTime: 5 * 60 * 1000,
   })
 }
+
+export function useGroupInvites() {
+  return useQuery({
+    queryKey: qk.groupInvites,
+    queryFn: async () => normalizeList((await api.get('/groups/me/invites')).data),
+  })
+}

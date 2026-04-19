@@ -97,8 +97,9 @@ export function GroupDetailPage() {
 
   const categoryData = aggregateByCategory(expenses)
   const groupMemberIds = new Set(members.map((m) => m.id))
+  const pendingInviteUserIds = new Set((group?.pending_invites || []).map((inv) => inv.invited_user_id))
   const contactsNotInGroup = contacts
-    .filter((c) => c.user && !groupMemberIds.has(c.contact_user_id))
+    .filter((c) => c.user && !groupMemberIds.has(c.contact_user_id) && !pendingInviteUserIds.has(c.contact_user_id))
     .map((c) => c.user)
   const contactIdSet = new Set(contacts.map((c) => c.contact_user_id))
 
@@ -128,10 +129,16 @@ export function GroupDetailPage() {
   const addUserToGroup = async (user) => {
     setMemberBusyId(user.id)
     try {
-      await addGroupMember.mutateAsync(user.id)
-      toast({ variant: 'success', title: `${user.display_name} added to group` })
+      const res = await addGroupMember.mutateAsync(user.id)
+      if (res?.already_member) {
+        toast({ title: `${user.display_name} is already in this group` })
+      } else if (res?.already_pending) {
+        toast({ title: `Invitation already sent to ${user.display_name}` })
+      } else {
+        toast({ variant: 'success', title: `Invitation sent to ${user.display_name}` })
+      }
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add member', description: err.message })
+      toast({ variant: 'error', title: 'Could not send invite', description: err.message })
     } finally {
       setMemberBusyId(null)
     }
@@ -143,10 +150,14 @@ export function GroupDetailPage() {
       if (!contactIdSet.has(user.id)) {
         await addContact.mutateAsync({ user_id: user.id })
       }
-      await addGroupMember.mutateAsync(user.id)
-      toast({ variant: 'success', title: `${user.display_name} added to contacts and group` })
+      const res = await addGroupMember.mutateAsync(user.id)
+      if (res?.already_pending) {
+        toast({ title: `Contact added, invitation already pending` })
+      } else {
+        toast({ variant: 'success', title: `${user.display_name} added to contacts and invited` })
+      }
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add member', description: err.message })
+      toast({ variant: 'error', title: 'Could not send invite', description: err.message })
     } finally {
       setMemberBusyId(null)
     }
@@ -539,13 +550,13 @@ export function GroupDetailPage() {
                         <div className="text-sm font-medium truncate">{u.display_name}</div>
                         <div className="text-xs text-[var(--color-muted-foreground)] truncate">{u.handle}</div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={() => addUserToGroup(u)}
-                        disabled={memberBusyId === u.id}
-                      >
-                        Add
-                      </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => addUserToGroup(u)}
+                          disabled={memberBusyId === u.id || pendingInviteUserIds.has(u.id)}
+                        >
+                          {pendingInviteUserIds.has(u.id) ? 'Invited' : 'Invite'}
+                        </Button>
                     </div>
                   ))}
                 </div>
@@ -573,6 +584,7 @@ export function GroupDetailPage() {
                       .filter((u) => u.id !== me?.id)
                       .map((u, i) => {
                         const inGroup = groupMemberIds.has(u.id)
+                        const invited = pendingInviteUserIds.has(u.id)
                         const isContact = contactIdSet.has(u.id)
                         return (
                           <div key={u.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
@@ -586,9 +598,13 @@ export function GroupDetailPage() {
                                 <Button size="sm" variant="secondary" disabled>
                                   Added
                                 </Button>
+                              ) : invited ? (
+                                <Button size="sm" variant="secondary" disabled>
+                                  Invited
+                                </Button>
                               ) : isContact ? (
                                 <Button size="sm" onClick={() => addUserToGroup(u)} disabled={memberBusyId === u.id}>
-                                  Add to group
+                                  Invite to group
                                 </Button>
                               ) : (
                                 <Button

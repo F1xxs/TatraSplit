@@ -4,6 +4,7 @@ import { qk } from '@/lib/queryKeys'
 export function invalidateGlobal(qc) {
   qc.invalidateQueries({ queryKey: qk.me })
   qc.invalidateQueries({ queryKey: qk.groups })
+  qc.invalidateQueries({ queryKey: qk.groupInvites })
   qc.invalidateQueries({ queryKey: qk.meBalances })
   qc.invalidateQueries({ queryKey: qk.activity })
   qc.invalidateQueries({ queryKey: qk.users() })

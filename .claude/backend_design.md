@@ -59,7 +59,7 @@ Integer cents everywhere. Fields named `amount_cents`, `share_cents`, `net_cents
 
 ## Activity
 
-Every mutation (create group, add expense, settle, join) must call `append_activity(db, group_id, actor_id, kind, payload)`. Activity kinds: `group.created`, `group.member.joined`, `group.member.left`, `expense.added`, `settlement.created`, `recurring.triggered`.
+Every mutation (create group, add expense, settle, join/invite) must call `append_activity(db, group_id, actor_id, kind, payload)`. Activity kinds: `group.created`, `group.member.invited`, `group.member.joined`, `group.member.left`, `expense.added`, `settlement.created`, `recurring.triggered`.
 
 ## Adding a new route
 

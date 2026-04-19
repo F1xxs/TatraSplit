@@ -1,15 +1,30 @@
 import { Link } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 import { GroupCard } from '@/components/shared/GroupCard'
 import { DataState } from '@/components/shared/DataState'
-import { useGroups } from '@/hooks/useGroups'
+import { useGroups, useGroupInvites } from '@/hooks/useGroups'
 import { useContacts } from '@/hooks/useContacts'
+import { useRespondGroupInvite } from '@/hooks/useMutations'
+import { useToast } from '@/components/ui/toaster'
 
 export function GroupsListPage() {
   const { data: groups = [], isLoading, error, refetch } = useGroups()
+  const { data: invites = [] } = useGroupInvites()
   const { data: contacts = [] } = useContacts()
+  const respondInvite = useRespondGroupInvite()
+  const { toast } = useToast()
   const contactUsers = contacts.map((c) => c.user).filter(Boolean)
+
+  const handleInviteAction = async (inviteId, action) => {
+    try {
+      await respondInvite.mutateAsync({ inviteId, action })
+      toast({ variant: 'success', title: action === 'accept' ? 'Invitation accepted' : 'Invitation declined' })
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not process invite', description: err.message })
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -22,6 +37,60 @@ export function GroupsListPage() {
           <Plus className="h-4 w-4" />
           New
         </Link>
+      </div>
+
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
+          <div className="text-sm font-semibold">Invitations</div>
+          <div className="text-xs text-[var(--color-muted-foreground)]">
+            {invites.length} pending
+          </div>
+        </div>
+        {invites.length === 0 ? (
+          <div className="px-4 py-6 text-sm text-[var(--color-muted-foreground)]">
+            No pending group invitations.
+          </div>
+        ) : (
+          <div>
+            {invites.map((invite, i) => (
+              <div key={invite.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <Avatar
+                    name={invite?.group?.name || 'Group'}
+                    color={invite?.invited_by_user?.color || 'hsl(210 90% 62%)'}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">
+                      {invite?.group?.emoji ? `${invite.group.emoji} ` : ''}
+                      {invite?.group?.name || 'Group invitation'}
+                    </div>
+                    <div className="text-xs text-[var(--color-muted-foreground)] truncate">
+                      Invited by {invite?.invited_by_user?.display_name || 'a group member'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={respondInvite.isPending}
+                      onClick={() => handleInviteAction(invite.id, 'decline')}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={respondInvite.isPending}
+                      onClick={() => handleInviteAction(invite.id, 'accept')}
+                    >
+                      Accept
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">

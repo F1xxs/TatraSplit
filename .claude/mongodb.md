@@ -17,6 +17,7 @@ async def my_route(db=Depends(get_db)):
 |---|---|
 | `users`       | `_id`, `handle` (unique), `display_name`, `avatar_url`, `color`, `balance_cents`, `currency` |
 | `groups`      | `_id`, `name`, `emoji`, `currency`, `member_ids[]`, `created_by`, `invite_token`, `created_at` |
+| `group_invites` | `_id`, `group_id`, `invited_user_id`, `invited_by_user_id`, `status` (`pending/accepted/declined`), `created_at`, `responded_at` |
 | `expenses`    | `_id`, `group_id`, `paid_by`, `amount_cents`, `category`, `split[]` (`user_id`, `share_cents`), `created_at` |
 | `settlements` | `_id`, `group_id`, `from_user`, `to_user`, `amount_cents`, `currency`, `method`, `note`, `created_at` |
 | `activity`    | `_id`, `group_id`, `actor_id`, `kind`, `payload`, `created_at` |
@@ -28,6 +29,8 @@ async def my_route(db=Depends(get_db)):
 users.create_index("handle", unique=True)
 groups.create_index("invite_token", unique=True, sparse=True)
 groups.create_index("member_ids")
+group_invites.create_index([("invited_user_id", ASC), ("status", ASC), ("created_at", DESC)])
+group_invites.create_index([("group_id", ASC), ("invited_user_id", ASC), ("status", ASC)])
 expenses.create_index([("group_id", ASC), ("created_at", DESC)])
 expenses.create_index("paid_by")
 expenses.create_index("split.user_id")

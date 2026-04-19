@@ -57,7 +57,11 @@ export function NewGroupPage() {
         currency,
         member_handles: Array.from(selected),
       })
-      toast({ variant: 'success', title: 'Group created' })
+      const inviteCount = selected.size
+      toast({
+        variant: 'success',
+        title: inviteCount > 0 ? `Group created, ${inviteCount} invite${inviteCount === 1 ? '' : 's'} sent` : 'Group created',
+      })
       navigate(`/groups/${group.id}`)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not create group', description: err.message })
@@ -69,7 +73,7 @@ export function NewGroupPage() {
     try {
       await addContact.mutateAsync({ user_id: user.id })
       toggle(user.handle)
-      toast({ variant: 'success', title: `${user.display_name} added to contacts and group` })
+      toast({ variant: 'success', title: `${user.display_name} added to contacts and invite list` })
     } catch (err) {
       toast({ variant: 'error', title: 'Could not add contact', description: err.message })
     } finally {
@@ -235,7 +239,7 @@ export function NewGroupPage() {
                             </Button>
                           ) : isContact ? (
                             <Button size="sm" onClick={() => toggle(u.handle)}>
-                              Add to group
+                              Invite to group
                             </Button>
                           ) : (
                             <Button
@@ -245,7 +249,7 @@ export function NewGroupPage() {
                               className="gap-1.5"
                             >
                               <UserPlus className="h-3.5 w-3.5" />
-                              Add contact + group
+                              Add contact + invite
                             </Button>
                           )}
                         </div>

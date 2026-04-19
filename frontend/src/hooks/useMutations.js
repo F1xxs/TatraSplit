@@ -202,3 +202,14 @@ export function useAddGroupMember(groupId) {
     },
   })
 }
+
+export function useRespondGroupInvite() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ inviteId, action = 'accept' }) =>
+      (await api.post(`/groups/invites/${inviteId}/${action}`)).data,
+    onSuccess: () => {
+      invalidateGlobal(qc)
+    },
+  })
+}

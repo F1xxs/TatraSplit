@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { Home, ArrowLeftRight, LayoutGrid, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/toaster'
@@ -10,12 +10,7 @@ const navItems = [
 ]
 
 export function BottomNav() {
-  const navigate = useNavigate()
   const { toast } = useToast()
-
-  function handlePayment() {
-    navigate('/payment')
-  }
 
   function handleMore() {
     toast({ title: 'Feature not available in demo' })
@@ -37,16 +32,21 @@ export function BottomNav() {
         <NavItem {...navItems[0]} />
         <NavItem {...navItems[1]} />
 
-        <button
-          onClick={handlePayment}
-          className="relative -top-2 flex flex-col items-center justify-end gap-0.5 -mt-6"
+        <NavLink
+          to="/payment"
+          className={({ isActive }) =>
+            cn(
+              'relative -top-1 flex h-14 flex-col items-center justify-center gap-0.5 transition-colors hover:text-[var(--color-foreground)]',
+              isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-muted-foreground)]',
+            )
+          }
           aria-label="Payment"
         >
           <span className="relative flex h-[34px] w-[56px] items-start justify-center">
             <span className="absolute inset-x-0 top-0 h-[34px] rounded-t-full border-2 border-b-0 border-[#11a6ff]" />
             <svg
               viewBox="0 0 24 24"
-              className="relative top-[9px] h-5 w-5 text-white"
+              className="relative top-[9px] h-[18px] w-[18px]"
               fill="none"
               stroke="currentColor"
               strokeWidth="1.9"
@@ -60,8 +60,8 @@ export function BottomNav() {
               <path d="M4 14h16" />
             </svg>
           </span>
-          <span className="text-[10px] font-medium text-[var(--color-foreground)]">Payment</span>
-        </button>
+          <span className="text-[10px] font-medium">Payment</span>
+        </NavLink>
 
         <NavItem {...navItems[2]} />
 
@@ -86,7 +86,7 @@ function NavItem({ to, icon: NavIcon, label, end = false }) {
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex h-14 flex-col items-center justify-center gap-0.5 transition-colors',
+          'flex h-14 flex-col items-center justify-center gap-0.5 transition-colors hover:text-[var(--color-foreground)]',
           isActive
             ? 'text-[var(--color-primary)]'
             : 'text-[var(--color-muted-foreground)]',

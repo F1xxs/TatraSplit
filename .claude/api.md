@@ -26,7 +26,7 @@ Default local base URL: `http://localhost:8000/api/v1`
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/groups` | Create group (`name`, `emoji`, `currency`, `member_handles[]`) |
+| POST | `/groups` | Create group (`name`, `emoji`, `currency`, `member_handles[]`), sends invitations instead of auto-adding members (except `is_direct=true`) |
 | GET | `/groups` | List groups for current user |
 | GET | `/groups/{id}` | Group detail with members |
 | DELETE | `/groups/{group_id}` | Delete group (creator only); returns 400 if unsettled balances exist |
@@ -34,6 +34,9 @@ Default local base URL: `http://localhost:8000/api/v1`
 | DELETE | `/groups/{id}/members/{user_id}` | Remove member |
 | GET | `/groups/{id}/invite` | Returns `invite_token` |
 | POST | `/groups/join/{invite_token}` | Join by invite token |
+| GET | `/groups/me/invites` | Pending invitations for current user |
+| POST | `/groups/invites/{invite_id}/accept` | Accept pending invitation |
+| POST | `/groups/invites/{invite_id}/decline` | Decline pending invitation |
 
 ### Group delete rules (`DELETE /groups/{group_id}`)
 
@@ -141,3 +144,5 @@ This is how frontend hooks currently map to endpoints:
 - `useDeleteRecurring(id)` -> `DELETE /groups/{id}/recurring/{recurring_id}`
 - `usePayment` -> `POST /groups/{id}/settlements` (auto-finds/creates direct group first)
 - `useJoinGroup` -> `POST /groups/join/{invite_token}`
+- `useGroupInvites` -> `GET /groups/me/invites`
+- `useRespondGroupInvite` -> `POST /groups/invites/{invite_id}/{accept|decline}`
