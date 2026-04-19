@@ -18,6 +18,8 @@ import { Button } from '@/components/ui/button'
 import { invalidateGlobal } from '@/lib/invalidation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
+import { useGroupInvites } from '@/hooks/useGroups'
+import { InboxSheet } from '@/components/shared/InboxSheet'
 
 const navItems = [
   { to: '/',         icon: Home,             label: 'Home',            end: true },
@@ -82,7 +84,13 @@ export function AppShell() {
     invalidateGlobal(qc)
   }
 
+  const [inboxOpen, setInboxOpen] = useState(false)
+  const { data: invites = [] } = useGroupInvites()
+  const inviteCount = invites.length
+
   return (
+    <>
+    <InboxSheet open={inboxOpen} onOpenChange={setInboxOpen} />
     <div className="flex min-h-svh w-full">
       {/* Sidebar (desktop) */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-card)] sticky top-0 h-svh">
@@ -202,17 +210,18 @@ export function AppShell() {
 
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0">
-        <TopBar me={activeIdentity} onStub={() => toast({ title: 'Feature not available in demo' })} />
+        <TopBar me={activeIdentity} onStub={() => toast({ title: 'Feature not available in demo' })} onInbox={() => setInboxOpen(true)} inviteCount={inviteCount} />
         <main className="flex-1 w-full mx-auto max-w-3xl lg:max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+9.25rem)] pt-4 lg:pb-10 lg:pt-8">
           <Outlet />
         </main>
         <BottomNav />
       </div>
     </div>
+    </>
   )
 }
 
-function TopBar({ me, onStub }) {
+function TopBar({ me, onStub, onInbox, inviteCount = 0 }) {
   const location = useLocation()
   const isDashboard = location.pathname === '/'
 
@@ -229,11 +238,16 @@ function TopBar({ me, onStub }) {
         {isDashboard ? (
           <>
             <button
-              onClick={onStub}
-              className="justify-self-start text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
-              aria-label="Mail"
+              onClick={onInbox}
+              className="justify-self-start relative text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] transition-colors"
+              aria-label="Inbox"
             >
               <Mail className="h-5 w-5" />
+              {inviteCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-primary)] text-[9px] font-bold text-white">
+                  {inviteCount > 9 ? '9+' : inviteCount}
+                </span>
+              )}
             </button>
             <Link to="/" className="justify-self-center flex items-center" aria-label="Tatra banka">
               <img src={tatraLogo} alt="Tatra banka" className="h-15 w-15 object-contain" />
