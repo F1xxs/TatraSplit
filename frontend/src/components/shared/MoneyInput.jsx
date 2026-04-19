@@ -187,12 +187,13 @@ export function MoneyInput({
         open={calculatorOpen}
         onOpenChange={setCalculatorOpen}
         side="bottom"
+        showCloseButton={false}
         className="max-h-[70vh] w-full rounded-t-2xl sm:left-1/2 sm:right-auto sm:w-[24rem] sm:-translate-x-1/2"
       >
         <SheetContent className="space-y-0 overflow-hidden p-0">
           <div className="bg-black">
             <div className="px-3 pb-2 pt-3">
-              <div className="text-xs text-[var(--color-muted-foreground)]">Suma*</div>
+              <div className="text-xs text-[var(--color-muted-foreground)]">Amount</div>
               <div className="mt-1 flex items-baseline justify-end gap-2">
                 <input
                   inputMode="decimal"

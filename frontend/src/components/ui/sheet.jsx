@@ -3,7 +3,15 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function Sheet({ open, onOpenChange, side = 'right', className, zIndex = 90, children }) {
+export function Sheet({
+  open,
+  onOpenChange,
+  side = 'right',
+  className,
+  zIndex = 90,
+  showCloseButton = true,
+  children,
+}) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -50,13 +58,15 @@ export function Sheet({ open, onOpenChange, side = 'right', className, zIndex = 
         )}
         style={{ animation: anim }}
       >
-        <button
-          onClick={() => onOpenChange?.(false)}
-          aria-label="Close"
-          className="absolute right-4 top-4 z-20 rounded-md p-1 text-[var(--color-muted-foreground)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-foreground)] transition"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {showCloseButton && (
+          <button
+            onClick={() => onOpenChange?.(false)}
+            aria-label="Close"
+            className="absolute right-4 top-4 z-20 rounded-md p-1 text-[var(--color-muted-foreground)] hover:bg-[var(--color-secondary)] hover:text-[var(--color-foreground)] transition"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
         {children}
       </div>
     </div>,
