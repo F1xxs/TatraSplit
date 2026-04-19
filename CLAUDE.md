@@ -19,6 +19,8 @@ Before starting any task, read the relevant files in `.claude/`:
 
 `.claude/` — design guidelines, frontend structure doc, API contract, backend design, MongoDB guidelines, tasks index.
 
+`.claude/startup.md` — startup/run instructions (LAN mode, dev mode, ports, prerequisites).
+
 ## Dev commands
 
 ```bash

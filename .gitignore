@@ -56,5 +56,5 @@ pnpm-debug.log*
 *.local
 
 # ── Project specific
-
+.presentation
 .playwright-mcp/
