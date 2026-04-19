@@ -83,7 +83,7 @@ export function MoneyInput({
   const display = ((value ?? 0) / 100).toFixed(2)
 
   const openCalculator = () => {
-    setExpression(display)
+    setExpression('')
     setCalcError('')
     setCalculatorOpen(true)
   }
