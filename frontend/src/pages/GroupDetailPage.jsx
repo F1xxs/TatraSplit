@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom'
 import { ArrowLeft, Plus, Share2, Coins, Users, ChevronRight, AlertTriangle, RefreshCw, Trash2, CreditCard, Check, Pencil, Search, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,8 @@ import { cn } from '@/lib/utils'
 export function GroupDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const backTo = location.state?.from
   const { data: group, isLoading } = useGroup(id)
   const { data: expenses = [], isLoading: expLoading, error: expError, refetch: refetchExp } = useGroupExpenses(id)
   const { data: balances } = useGroupBalances(id)
@@ -179,15 +181,28 @@ export function GroupDetailPage() {
     }
   }
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    if (backTo) {
+      navigate(backTo, { replace: true })
+      return
+    }
+    navigate('/groups')
+  }
+
   return (
     <div className="space-y-4">
-      <Link
-        to="/groups"
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Groups
-      </Link>
+        Back
+      </button>
 
       {/* Account-detail style header card */}
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-5">
@@ -685,7 +700,14 @@ export function GroupDetailPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs text-[var(--color-muted-foreground)]">From your contacts</div>
-                <Link to="/contacts" className="text-xs text-[var(--color-primary)] font-medium">
+                <Link
+                  to="/contacts"
+                  state={{
+                    from: `${location.pathname}${location.search}`,
+                    backLabel: group?.name || 'Group',
+                  }}
+                  className="text-xs text-[var(--color-primary)] font-medium"
+                >
                   Manage contacts
                 </Link>
               </div>

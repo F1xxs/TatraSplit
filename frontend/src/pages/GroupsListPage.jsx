@@ -98,7 +98,11 @@ export function GroupsListPage() {
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-border)]">
           <div className="text-sm font-semibold">Contacts</div>
-          <Link to="/contacts" className="text-xs text-[var(--color-primary)] font-medium">
+          <Link
+            to="/contacts"
+            state={{ from: '/groups', backLabel: 'Groups' }}
+            className="text-xs text-[var(--color-primary)] font-medium"
+          >
             Manage
           </Link>
         </div>

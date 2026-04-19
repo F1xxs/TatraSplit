@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { ArrowLeft, Check, Search, UserPlus, BookUser } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,19 +17,21 @@ const CURRENCIES = ['EUR', 'USD', 'GBP', 'CZK']
 
 export function NewGroupPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const draft = location.state?.newGroupDraft
   const { data: me } = useMe()
   const { data: contacts = [] } = useContacts()
   const createGroup = useCreateGroup()
   const addContact = useAddContact()
   const { toast } = useToast()
 
-  const [name, setName] = useState('')
-  const [emoji, setEmoji] = useState('🏠')
-  const [currency, setCurrency] = useState('EUR')
-  const [selected, setSelected] = useState(new Set())
-  const [search, setSearch] = useState('')
+  const [name, setName] = useState(draft?.name || '')
+  const [emoji, setEmoji] = useState(draft?.emoji || '🏠')
+  const [currency, setCurrency] = useState(draft?.currency || 'EUR')
+  const [selected, setSelected] = useState(new Set(draft?.selectedHandles || []))
+  const [search, setSearch] = useState(draft?.search || '')
   const [busyUserId, setBusyUserId] = useState(null)
-  const [jarMode, setJarMode] = useState(false)
+  const [jarMode, setJarMode] = useState(Boolean(draft?.jarMode))
 
   const { data: searchResults = [], isLoading: searching } = useUserSearch(search)
 
@@ -85,15 +87,24 @@ export function NewGroupPage() {
 
   const visibleSearch = searchResults.filter((u) => u.id !== myId)
 
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate('/groups')
+  }
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
-      <Link
-        to="/groups"
+      <button
+        type="button"
+        onClick={goBack}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Groups
-      </Link>
+        Back
+      </button>
 
       <Card elevated>
         <CardHeader>
@@ -193,7 +204,23 @@ export function NewGroupPage() {
                   Use contacts for quick member selection.
                 </p>
               </div>
-              <Link to="/contacts">
+              <Link
+                to="/contacts"
+                state={{
+                  from: '/groups/new',
+                  backLabel: 'New group',
+                  returnState: {
+                    newGroupDraft: {
+                      name,
+                      emoji,
+                      currency,
+                      selectedHandles: Array.from(selected),
+                      search,
+                      jarMode,
+                    },
+                  },
+                }}
+              >
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <BookUser className="h-3.5 w-3.5" />
                   See contacts
@@ -296,9 +323,7 @@ export function NewGroupPage() {
       </Card>
 
       <div className="flex justify-end gap-2">
-        <Link to="/groups">
-          <Button variant="ghost">Cancel</Button>
-        </Link>
+        <Button variant="ghost" onClick={goBack}>Cancel</Button>
         <Button onClick={submit} disabled={!canSubmit || createGroup.isPending}>
           {createGroup.isPending ? 'Creating…' : 'Create group'}
         </Button>
