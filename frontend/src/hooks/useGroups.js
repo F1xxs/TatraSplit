@@ -6,6 +6,8 @@ import { normalizeGroup, normalizeList } from '@/lib/normalize'
 export function useGroups() {
   return useQuery({
     queryKey: qk.groups,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
     queryFn: async () => {
       const groups = normalizeList((await api.get('/groups')).data).map(normalizeGroup)
       if (!groups.some((g) => g?.net_cents == null)) return groups
@@ -65,6 +67,8 @@ export function useActivity() {
   return useQuery({
     queryKey: qk.activity,
     queryFn: async () => normalizeList((await api.get('/activity')).data),
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   })
 }
 
@@ -80,5 +84,7 @@ export function useGroupInvites() {
   return useQuery({
     queryKey: qk.groupInvites,
     queryFn: async () => normalizeList((await api.get('/groups/me/invites')).data),
+    refetchInterval: 10_000,
+    refetchIntervalInBackground: false,
   })
 }

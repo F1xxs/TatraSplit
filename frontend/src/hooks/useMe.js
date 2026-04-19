@@ -15,5 +15,7 @@ export function useMeBalances() {
   return useQuery({
     queryKey: qk.meBalances,
     queryFn: async () => (await api.get('/me/balances')).data,
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
   })
 }
