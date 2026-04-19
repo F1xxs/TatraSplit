@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function Sheet({ open, onOpenChange, side = 'right', className, children }) {
+export function Sheet({ open, onOpenChange, side = 'right', className, zIndex = 90, children }) {
   useEffect(() => {
     if (!open) return
     const onKey = (e) => {
@@ -36,10 +36,10 @@ export function Sheet({ open, onOpenChange, side = 'right', className, children 
         : 'slide-in-from-bottom 260ms cubic-bezier(0.22, 0.61, 0.36, 1)'
 
   return createPortal(
-    <div className="fixed inset-0 z-[90]">
+    <div className="fixed inset-0" style={{ zIndex }}>
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        style={{ animation: 'fade-in 200ms ease-out' }}
+        style={{ animation: 'fade-in 200ms ease-out', touchAction: 'none' }}
         onClick={() => onOpenChange?.(false)}
       />
       <div
@@ -96,7 +96,11 @@ export function SheetDescription({ className, ...props }) {
 
 export function SheetContent({ className, ...props }) {
   return (
-    <div className={cn('flex-1 overflow-y-auto p-6', className)} {...props} />
+    <div
+      className={cn('flex-1 min-h-0 overflow-y-scroll overscroll-contain p-6', className)}
+      style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+      {...props}
+    />
   )
 }
 

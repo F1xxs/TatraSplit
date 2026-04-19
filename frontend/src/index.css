@@ -67,6 +67,7 @@
 
   html {
     color-scheme: dark;
+    overscroll-behavior: none;
   }
 
   body {
@@ -78,6 +79,7 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    overscroll-behavior: none;
   }
 
   #root {
@@ -112,6 +114,13 @@
   }
   ::-webkit-scrollbar-thumb:hover {
     background: hsl(0 0% 9%);
+  }
+
+  nav a,
+  nav button {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 }
 
