@@ -24,6 +24,9 @@ export function DashboardPage() {
   const navigate = useNavigate()
   const [cardIdx, setCardIdx] = useState(0)
 
+  const normalGroups = groups.filter(g => !g.jar_mode)
+  const jarGroups = groups.filter(g => g.jar_mode && !g.jar_closed)
+
   const walletBalance = me?.balance_cents ?? 0
   const walletCurrency = me?.currency || 'EUR'
   const firstName = me?.display_name?.split(' ')[0] || ''
@@ -129,7 +132,13 @@ export function DashboardPage() {
               <div className="mt-4 flex items-end justify-between">
                 <div>
                   <div className="text-[11px] text-[var(--color-muted-foreground)]">Disposable balance</div>
-                  <div className="text-2xl font-bold tabular-nums mt-0.5">1 563,34 EUR</div>
+                  {(balLoading || meLoading) ? (
+                    <Skeleton className="h-7 w-28 mt-1" />
+                  ) : (
+                    <div className="text-2xl font-bold tabular-nums mt-0.5">
+                      {formatMoney(walletBalance, walletCurrency)}
+                    </div>
+                  )}
                 </div>
               </div>
             </button>
@@ -191,32 +200,51 @@ export function DashboardPage() {
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold">Shared payments</h2>
-          <Link to="/groups" className="text-sm text-[var(--color-primary)] font-medium">
-            All
-          </Link>
+          <Link to="/groups" className="text-sm text-[var(--color-primary)] font-medium">All</Link>
         </div>
         <DataState
           loading={groupsLoading}
           error={groupsError}
-          empty={groups.length === 0}
+          empty={normalGroups.length === 0}
           emptyContent={
             <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-6 text-center">
               <div className="text-sm text-[var(--color-muted-foreground)]">No shared payments yet.</div>
-              <Link to="/groups/new" className="mt-2 inline-block text-sm text-[var(--color-primary)] font-medium">
-                Create group →
-              </Link>
+              <Link to="/groups/new" className="mt-2 inline-block text-sm text-[var(--color-primary)] font-medium">Create group →</Link>
             </div>
           }
           loadingRows={2}
           onRetry={refetchGroups}
         >
           <div className="space-y-2">
-            {groups.slice(0, 3).map((g) => (
+            {normalGroups.slice(0, 3).map((g) => (
               <GroupCard key={g.id} group={g} />
             ))}
           </div>
         </DataState>
       </section>
+
+      {/* Moneyboxes */}
+      {(groupsLoading || jarGroups.length > 0) && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold">Moneyboxes</h2>
+            <Link to="/groups" className="text-sm text-[var(--color-primary)] font-medium">All</Link>
+          </div>
+          {groupsLoading ? (
+            <div className="space-y-2">
+              {[1, 2].map(i => <div key={i} className="h-16 rounded-2xl bg-[var(--color-card)] animate-pulse" />)}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+              {jarGroups.slice(0, 3).map((g, i) => (
+                <div key={g.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                  <GroupCard group={g} />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Recent transactions */}
       <section>

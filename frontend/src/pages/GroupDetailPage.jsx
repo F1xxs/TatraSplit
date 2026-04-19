@@ -28,6 +28,7 @@ import { QRInviteDialog } from '@/components/shared/QRInviteDialog'
 import { AddExpenseSheet } from './AddExpensePage'
 import { useMe } from '@/hooks/useMe'
 import { useDeleteGroup, useAddGroupMember } from '@/hooks/useMutations'
+import { useJar, useContributeJar, useWithdrawJar, useCloseJar } from '@/hooks/useJar'
 import {
   useGroup,
   useGroupExpenses,
@@ -64,6 +65,11 @@ export function GroupDetailPage() {
   const updateRecurring = useUpdateRecurring(id)
   const deleteRecurring = useDeleteRecurring(id)
 
+  const jar = useJar(group?.jar_mode ? id : null)
+  const contributeJar = useContributeJar(id)
+  const withdrawJar = useWithdrawJar(id)
+  const closeJar = useCloseJar(id)
+
   const [inviteOpen, setInviteOpen] = useState(false)
   const [invite, setInvite] = useState(null)
   const [addOpen, setAddOpen] = useState(false)
@@ -74,6 +80,12 @@ export function GroupDetailPage() {
   const [editingRecurring, setEditingRecurring] = useState(null)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberBusyId, setMemberBusyId] = useState(null)
+  const [jarContributeOpen, setJarContributeOpen] = useState(false)
+  const [jarContributeAmount, setJarContributeAmount] = useState(0)
+  const [jarWithdrawOpen, setJarWithdrawOpen] = useState(false)
+  const [jarWithdrawAmount, setJarWithdrawAmount] = useState(0)
+  const [jarWithdrawNote, setJarWithdrawNote] = useState('')
+  const [jarCloseConfirm, setJarCloseConfirm] = useState(false)
 
   const { data: memberSearchResults = [], isLoading: membersSearching } = useUserSearch(memberSearch)
 
@@ -94,6 +106,8 @@ export function GroupDetailPage() {
   const unsettledCents = (balances?.simplified_transfers || [])
     .reduce((sum, t) => sum + (t.amount_cents || 0), 0)
   const hasUnsettledBalances = unsettledCents > 0
+  const moneyboxBalanceCents = group?.jar_mode ? (jar.data?.pot_balance_cents ?? 0) : 0
+  const canDeleteMoneybox = !group?.jar_mode || moneyboxBalanceCents === 0
 
   const categoryData = aggregateByCategory(expenses)
   const groupMemberIds = new Set(members.map((m) => m.id))
@@ -104,15 +118,17 @@ export function GroupDetailPage() {
   const contactIdSet = new Set(contacts.map((c) => c.contact_user_id))
 
   const openDeleteDialog = () => {
+    if (group?.jar_mode && !canDeleteMoneybox) return
     setDeleteError('')
     setDeleteOpen(true)
   }
 
   const handleDeleteGroup = async () => {
+    if (group?.jar_mode && !canDeleteMoneybox) return
     setDeleteError('')
     try {
       await deleteGroup.mutateAsync()
-      toast({ variant: 'success', title: 'Group deleted' })
+      toast({ variant: 'success', title: group?.jar_mode ? 'Moneybox deleted' : 'Group deleted' })
       setDeleteOpen(false)
       navigate('/groups')
     } catch (err) {
@@ -194,41 +210,64 @@ export function GroupDetailPage() {
               </div>
             </div>
 
-            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-              <div className="text-[11px] text-[var(--color-muted-foreground)] uppercase tracking-wide">Your balance</div>
-              <BalancePill cents={myNet} currency={group?.currency || 'EUR'} size="lg" />
-            </div>
+            {!group?.jar_mode && (
+              <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+                <div className="text-[11px] text-[var(--color-muted-foreground)] uppercase tracking-wide">Your balance</div>
+                <BalancePill cents={myNet} currency={group?.currency || 'EUR'} size="lg" />
+              </div>
+            )}
           </>
         )}
       </div>
 
       {/* Quick actions row */}
-      <div className="grid grid-cols-5 gap-2">
-        <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
-        <GroupAction icon={CreditCard} label="Payment" href={`/payment?mode=split&groupId=${id}`} />
-        <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
-        <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
-        <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
-      </div>
+      {group?.jar_mode ? (
+        <div className="grid grid-cols-3 gap-2">
+          <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
+          <GroupAction icon={Coins} label="Contribute" onClick={() => { setJarContributeAmount(0); setJarContributeOpen(true) }} primary />
+          <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-5 gap-2">
+          <GroupAction icon={Plus} label="Add expense" onClick={() => setAddOpen(true)} primary />
+          <GroupAction icon={CreditCard} label="Payment" href={`/payment?mode=split&groupId=${id}`} />
+          <GroupAction icon={Coins} label="Settle up" href={`/groups/${id}/settle`} />
+          <GroupAction icon={Share2} label="Invite" onClick={openInvite} />
+          <GroupAction icon={Users} label="Members" onClick={() => setMembersOpen(true)} />
+        </div>
+      )}
 
       {isCreator && (
         <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="text-sm font-semibold">Delete this group</div>
+              <div className="text-sm font-semibold">{group?.jar_mode ? 'Delete this Moneybox' : 'Delete this group'}</div>
               <p className="text-xs text-[var(--color-muted-foreground)]">
-                This permanently removes all expenses, settlements, and activity for this group.
+                {group?.jar_mode
+                  ? `This permanently removes this Moneybox. Available balance: ${formatMoney(moneyboxBalanceCents, group?.currency || 'EUR')}.`
+                  : 'This permanently removes all expenses, settlements, and activity for this group.'}
               </p>
             </div>
-            <Button variant="destructive" size="sm" onClick={openDeleteDialog}>
-              Delete group
+            <Button size="sm" onClick={openDeleteDialog} disabled={deleteGroup.isPending || !canDeleteMoneybox}>
+              {group?.jar_mode ? 'Delete Moneybox' : 'Delete group'}
             </Button>
           </div>
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs defaultValue="expenses">
+      {/* Tabs — Moneybox groups skip the tab chrome and render moneybox content directly */}
+      {group?.jar_mode ? (
+        <JarSection
+          jar={jar}
+          me={me}
+          isCreator={isCreator}
+          currency={group?.currency || 'EUR'}
+          onWithdraw={() => { setJarWithdrawAmount(0); setJarWithdrawNote(''); setJarWithdrawOpen(true) }}
+          onDissolve={() => setJarCloseConfirm(true)}
+        />
+      ) : null}
+
+      {!group?.jar_mode && <Tabs defaultValue="expenses">
         <TabsList className="w-full rounded-none border-b border-[var(--color-border)] bg-transparent p-0 h-auto">
           {['expenses', 'balances', 'activity', 'recurring'].map((tab) => (
             <TabsTrigger
@@ -438,7 +477,124 @@ export function GroupDetailPage() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
+
+      </Tabs>}
+
+      {/* Jar: contribute sheet */}
+      <Sheet open={jarContributeOpen} onOpenChange={setJarContributeOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Add to pot</SheetTitle>
+            <SheetDescription>Your contribution to the shared fund.</SheetDescription>
+          </SheetHeader>
+          <div className="rounded-2xl bg-[var(--color-secondary)] py-8 mb-6">
+            <MoneyInput value={jarContributeAmount} onChange={setJarContributeAmount} currency={group?.currency || 'EUR'} autoFocus />
+            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{group?.currency || 'EUR'}</div>
+          </div>
+          <SheetFooter>
+            <Button variant="ghost" onClick={() => setJarContributeOpen(false)}>Cancel</Button>
+            <Button
+              disabled={jarContributeAmount <= 0 || contributeJar.isPending}
+              onClick={async () => {
+                try {
+                  await contributeJar.mutateAsync(jarContributeAmount)
+                  toast({ variant: 'success', title: 'Contribution added to pot' })
+                  setJarContributeOpen(false)
+                } catch (err) {
+                  toast({ variant: 'error', title: 'Could not contribute', description: err.message })
+                }
+              }}
+            >
+              {contributeJar.isPending ? 'Saving…' : 'Confirm'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Jar: withdraw sheet (admin only) */}
+      <Sheet open={jarWithdrawOpen} onOpenChange={setJarWithdrawOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+          <SheetHeader className="mb-4">
+            <SheetTitle>Withdraw from pot</SheetTitle>
+            <SheetDescription>
+              Take money from the shared fund.
+              {jar.data && ` Available: ${formatMoney(jar.data.pot_balance_cents, jar.data.currency)}`}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="rounded-2xl bg-[var(--color-secondary)] py-8 mb-4">
+            <MoneyInput value={jarWithdrawAmount} onChange={setJarWithdrawAmount} currency={group?.currency || 'EUR'} autoFocus />
+            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{group?.currency || 'EUR'}</div>
+          </div>
+          <div className="mb-4">
+            <Label htmlFor="withdraw-note">Note (optional)</Label>
+            <Input
+              id="withdraw-note"
+              className="mt-2"
+              placeholder="e.g. Bought snacks"
+              value={jarWithdrawNote}
+              onChange={(e) => setJarWithdrawNote(e.target.value)}
+            />
+          </div>
+          <SheetFooter>
+            <Button variant="ghost" onClick={() => setJarWithdrawOpen(false)}>Cancel</Button>
+            <Button
+              disabled={jarWithdrawAmount <= 0 || withdrawJar.isPending}
+              onClick={async () => {
+                try {
+                  await withdrawJar.mutateAsync({ amount_cents: jarWithdrawAmount, note: jarWithdrawNote })
+                  toast({ variant: 'success', title: 'Withdrawal recorded' })
+                  setJarWithdrawOpen(false)
+                } catch (err) {
+                  toast({ variant: 'error', title: 'Could not withdraw', description: err.message })
+                }
+              }}
+            >
+              {withdrawJar.isPending ? 'Saving…' : 'Withdraw'}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Moneybox: dissolve confirm dialog */}
+      <Dialog open={jarCloseConfirm} onOpenChange={setJarCloseConfirm}>
+        <DialogContent onClose={() => setJarCloseConfirm(false)}>
+          <DialogHeader>
+            <DialogTitle>Dissolve the Moneybox?</DialogTitle>
+            <DialogDescription>
+              {jar.data?.pot_balance_cents > 0
+                ? `${formatMoney(jar.data.pot_balance_cents, jar.data?.currency)} will be returned to contributors proportionally. Nobody owes anybody anything after this.`
+                : 'Pot is empty. The Moneybox will be marked as dissolved.'}
+            </DialogDescription>
+          </DialogHeader>
+          {jar.data?.pot_balance_cents > 0 && (
+            <div className="space-y-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-3">
+              {(jar.data.members || []).filter(m => m.refund_cents > 0).map(m => (
+                <div key={m.user_id} className="flex items-center justify-between text-sm">
+                  <span>{m.display_name}{m.user_id === me?.id && ' (you)'}</span>
+                  <span className="font-semibold text-green-500">{formatMoney(m.refund_cents, jar.data.currency)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setJarCloseConfirm(false)}>Cancel</Button>
+            <Button
+              disabled={closeJar.isPending}
+              onClick={async () => {
+                try {
+                  await closeJar.mutateAsync()
+                  toast({ variant: 'success', title: 'Moneybox dissolved' })
+                  setJarCloseConfirm(false)
+                } catch (err) {
+                  toast({ variant: 'error', title: 'Could not dissolve Moneybox', description: err.message })
+                }
+              }}
+            >
+              {closeJar.isPending ? 'Dissolving…' : 'Dissolve'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <QRInviteDialog
         open={inviteOpen}
@@ -463,13 +619,15 @@ export function GroupDetailPage() {
       >
         <DialogContent onClose={() => setDeleteOpen(false)}>
           <DialogHeader>
-            <DialogTitle>Delete group “{group?.name || 'this group'}”?</DialogTitle>
+            <DialogTitle>{group?.jar_mode ? `Delete Moneybox “${group?.name || 'this Moneybox'}”?` : `Delete group “${group?.name || 'this group'}”?`}</DialogTitle>
             <DialogDescription>
-              This action cannot be undone. All group expenses, settlements, and activity will be permanently removed.
+              {group?.jar_mode
+                ? 'This action cannot be undone. The Moneybox and all its activity will be permanently removed.'
+                : 'This action cannot be undone. All group expenses, settlements, and activity will be permanently removed.'}
             </DialogDescription>
           </DialogHeader>
 
-          {hasUnsettledBalances && (
+          {!group?.jar_mode && hasUnsettledBalances && (
             <div className="rounded-xl border border-[var(--color-destructive)]/50 bg-[var(--color-destructive)]/10 p-3">
               <div className="flex items-start gap-2 text-sm text-[var(--color-destructive)]">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -492,11 +650,10 @@ export function GroupDetailPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
               onClick={handleDeleteGroup}
-              disabled={deleteGroup.isPending}
+              disabled={deleteGroup.isPending || (group?.jar_mode && !canDeleteMoneybox)}
             >
-              {deleteGroup.isPending ? 'Deleting…' : 'Delete group'}
+              {deleteGroup.isPending ? 'Deleting…' : (group?.jar_mode ? 'Delete Moneybox' : 'Delete group')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -649,6 +806,106 @@ export function GroupDetailPage() {
           </div>
         </SheetContent>
       </Sheet>
+    </div>
+  )
+}
+
+function JarSection({ jar, me, isCreator, currency, onWithdraw, onDissolve }) {
+  if (jar.isLoading) {
+    return (
+      <div className="space-y-2 mt-4">
+        {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
+      </div>
+    )
+  }
+  const d = jar.data
+  if (!d) return null
+  const cur = d.currency || currency
+
+  return (
+    <div className="space-y-4 mt-4">
+      {/* Pot balance */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] p-5 text-center space-y-1">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-sm text-[var(--color-muted-foreground)]">Pot balance</span>
+          {d.jar_closed && (
+            <span className="text-[11px] font-medium rounded-full px-2 py-0.5 bg-[var(--color-secondary)] text-[var(--color-muted-foreground)]">Dissolved</span>
+          )}
+        </div>
+        <div className="text-3xl font-bold tabular-nums">{formatMoney(d.pot_balance_cents, cur)}</div>
+        <div className="flex justify-center gap-4 pt-1 text-xs text-[var(--color-muted-foreground)]">
+          <span>↑ {formatMoney(d.total_contributed_cents, cur)} in</span>
+          <span>↓ {formatMoney(d.total_withdrawn_cents, cur)} out</span>
+        </div>
+      </div>
+
+      {/* Contributors */}
+      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--color-border)]">
+          <div className="text-sm font-semibold">Contributors</div>
+          <div className="text-xs text-[var(--color-muted-foreground)]">Dissolution returns proportional to contribution</div>
+        </div>
+        {(d.members || []).filter(m => m.contributed_cents > 0).length === 0 ? (
+          <div className="py-8 text-center text-sm text-[var(--color-muted-foreground)]">No contributions yet.</div>
+        ) : (
+          (d.members || []).filter(m => m.contributed_cents > 0).map((m, i) => (
+            <div key={m.user_id} className={cn('flex items-center gap-3 px-4 py-3', i > 0 && 'border-t border-[var(--color-border)]')}>
+              <div
+                className="h-9 w-9 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
+                style={{ background: m.color || '#0070D2' }}
+              >
+                {m.display_name?.[0] || '?'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {m.display_name}
+                  {m.user_id === me?.id && <span className="text-[var(--color-muted-foreground)] text-xs font-normal"> (you)</span>}
+                </div>
+                <div className="text-xs text-[var(--color-muted-foreground)]">
+                  {formatMoney(m.contributed_cents, cur)}
+                  {d.total_contributed_cents > 0 && ` · ${Math.round(m.contributed_cents / d.total_contributed_cents * 100)}%`}
+                </div>
+              </div>
+              {d.pot_balance_cents > 0 && m.refund_cents > 0 && (
+                <div className="text-right shrink-0">
+                  <div className="text-xs text-[var(--color-muted-foreground)]">{d.jar_closed ? 'Received' : 'Would get'}</div>
+                  <div className="text-sm font-semibold text-green-500 tabular-nums">{formatMoney(m.refund_cents, cur)}</div>
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Withdrawal history */}
+      {(d.withdrawals || []).length > 0 && (
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--color-border)]">
+            <div className="text-sm font-semibold">Withdrawals</div>
+          </div>
+          {d.withdrawals.map((w, i) => (
+            <div key={w.id} className={cn('flex items-center gap-3 px-4 py-3', i > 0 && 'border-t border-[var(--color-border)]')}>
+              <div className="h-9 w-9 rounded-full bg-red-500/15 flex items-center justify-center text-red-500 shrink-0 text-sm font-bold">↓</div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium">{w.user?.display_name || 'Admin'}</div>
+                {w.note && <div className="text-xs text-[var(--color-muted-foreground)] truncate">{w.note}</div>}
+                <div className="text-xs text-[var(--color-muted-foreground)]">{new Date(w.created_at).toLocaleDateString()}</div>
+              </div>
+              <div className="text-sm font-semibold text-red-500 tabular-nums shrink-0">−{formatMoney(w.amount_cents, cur)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Creator actions */}
+      {isCreator && d.pot_balance_cents > 0 && (
+        <div className="flex gap-2">
+          <Button className="flex-1" variant="outline" onClick={onWithdraw}>Withdraw</Button>
+          {!d.jar_closed && (
+            <Button className="flex-1" onClick={onDissolve}>Dissolve</Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

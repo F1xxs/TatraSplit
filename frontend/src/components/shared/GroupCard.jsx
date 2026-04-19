@@ -6,8 +6,10 @@ import { cn } from '@/lib/utils'
 export function GroupCard({ group, className }) {
   const net = group.net_cents ?? 0
   const memberCount = (group.members || []).length
-  const status =
-    Math.abs(net) < 1
+  const isJar = !!group.jar_mode
+  const status = isJar
+    ? 'Moneybox '
+    : Math.abs(net) < 1
       ? 'All settled'
       : net > 0
         ? 'You are owed'
@@ -31,7 +33,7 @@ export function GroupCard({ group, className }) {
         </div>
       </div>
       <div className="shrink-0 flex items-center gap-2">
-        <BalancePill cents={net} currency={group.currency} />
+        {!isJar && <BalancePill cents={net} currency={group.currency} />}
         <ChevronRight className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </div>
     </Link>

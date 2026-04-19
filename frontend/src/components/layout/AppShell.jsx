@@ -86,12 +86,41 @@ export function AppShell() {
   }
 
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [mobileSwitcherOpen, setMobileSwitcherOpen] = useState(false)
   const { data: invites = [] } = useGroupInvites()
   const inviteCount = invites.length
 
   return (
     <>
     <InboxSheet open={inboxOpen} onOpenChange={setInboxOpen} />
+
+    {/* Mobile account switcher sheet */}
+    {mobileSwitcherOpen && (
+      <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setMobileSwitcherOpen(false)}>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative bg-[var(--color-card)] rounded-t-2xl p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-1" onClick={(e) => e.stopPropagation()}>
+          <div className="w-10 h-1 rounded-full bg-[var(--color-border)] mx-auto mb-4" />
+          <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-muted-foreground)] px-3 mb-2">Demo accounts</div>
+          {demoAccounts.map((account) => (
+            <button
+              key={account.handle}
+              type="button"
+              onClick={() => { handleSelectAccount(account.handle); setMobileSwitcherOpen(false) }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-[var(--color-secondary)] transition-colors"
+            >
+              <Avatar name={account.display_name} color={account.color} size="sm" />
+              <div className="flex-1 text-left">
+                <div className="text-sm font-medium">{account.display_name}</div>
+                <div className="text-xs text-[var(--color-muted-foreground)]">{account.handle}</div>
+              </div>
+              {selectedHandle === account.handle && (
+                <Check className="h-4 w-4 text-[var(--color-primary)]" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    )}
     <div className="flex min-h-svh w-full">
       {/* Sidebar (desktop) */}
       <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-card)] sticky top-0 h-svh">
@@ -211,7 +240,7 @@ export function AppShell() {
 
       {/* Main column */}
       <div className="flex flex-col flex-1 min-w-0">
-        <TopBar me={activeIdentity} onStub={() => toast({ title: 'Feature not available in demo' })} onInbox={() => setInboxOpen(true)} inviteCount={inviteCount} />
+        <TopBar me={activeIdentity} onStub={() => toast({ title: 'Feature not available in demo' })} onInbox={() => setInboxOpen(true)} inviteCount={inviteCount} onSwitchAccount={() => setMobileSwitcherOpen(true)} />
         <main className="flex-1 w-full mx-auto max-w-3xl lg:max-w-4xl px-4 pb-[calc(env(safe-area-inset-bottom)+9.25rem)] pt-4 lg:pb-10 lg:pt-8">
           <PullToRefresh>
             <Outlet />
@@ -224,7 +253,7 @@ export function AppShell() {
   )
 }
 
-function TopBar({ me, onStub, onInbox, inviteCount = 0 }) {
+function TopBar({ me, onStub, onInbox, inviteCount = 0, onSwitchAccount }) {
   const location = useLocation()
   const isDashboard = location.pathname === '/'
 
@@ -256,10 +285,11 @@ function TopBar({ me, onStub, onInbox, inviteCount = 0 }) {
               <img src={tatraLogo} alt="Tatra banka" className="h-15 w-15 object-contain" />
             </Link>
             <button
-              onClick={onStub}
-              className="justify-self-end text-xs text-[var(--color-primary)] font-medium"
+              onClick={onSwitchAccount}
+              className="justify-self-end"
+              aria-label="Switch account"
             >
-              Customise
+              {me && <Avatar name={me.display_name} color={me.color} size="sm" />}
             </button>
           </>
         ) : (
@@ -267,7 +297,11 @@ function TopBar({ me, onStub, onInbox, inviteCount = 0 }) {
             <Link to="/" className="flex items-center gap-2.5">
               <img src={tatraLogo} alt="Tatra banka" className="h-13 w-13 object-contain" />
             </Link>
-            {me && <Avatar name={me.display_name} color={me.color} size="sm" />}
+            {me && (
+              <button onClick={onSwitchAccount} aria-label="Switch account">
+                <Avatar name={me.display_name} color={me.color} size="sm" />
+              </button>
+            )}
           </>
         )}
       </div>

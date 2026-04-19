@@ -12,4 +12,5 @@ export const qk = {
   meBalances: ['balances', 'me'],
   activity: ['activity'],
   groupRecurring: (id) => ['group', id, 'recurring'],
+  groupJar: (id) => ['group', id, 'jar'],
 }

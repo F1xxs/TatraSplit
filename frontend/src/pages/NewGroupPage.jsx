@@ -29,6 +29,7 @@ export function NewGroupPage() {
   const [selected, setSelected] = useState(new Set())
   const [search, setSearch] = useState('')
   const [busyUserId, setBusyUserId] = useState(null)
+  const [jarMode, setJarMode] = useState(false)
 
   const { data: searchResults = [], isLoading: searching } = useUserSearch(search)
 
@@ -53,9 +54,10 @@ export function NewGroupPage() {
     try {
       const group = await createGroup.mutateAsync({
         name: name.trim(),
-        emoji,
+        emoji: jarMode ? '📦' : emoji,
         currency,
         member_handles: Array.from(selected),
+        jar_mode: jarMode,
       })
       const inviteCount = selected.size
       toast({
@@ -151,6 +153,35 @@ export function NewGroupPage() {
                   {c}
                 </button>
               ))}
+            </div>
+          </div>
+
+          {/* Moneybox mode */}
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <Label>Moneybox</Label>
+                <p className="mt-0.5 text-xs text-[var(--color-muted-foreground)]">
+                  Members contribute to a shared pot. No debt — dissolution returns money proportional to contributions.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setJarMode((v) => !v)}
+                className={cn(
+                  'relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none',
+                  jarMode ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-secondary)]',
+                )}
+                role="switch"
+                aria-checked={jarMode}
+              >
+                <span
+                  className={cn(
+                    'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform',
+                    jarMode ? 'translate-x-5' : 'translate-x-0',
+                  )}
+                />
+              </button>
             </div>
           </div>
 

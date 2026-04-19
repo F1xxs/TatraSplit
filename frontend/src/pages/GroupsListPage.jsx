@@ -10,7 +10,9 @@ import { useRespondGroupInvite } from '@/hooks/useMutations'
 import { useToast } from '@/components/ui/toaster'
 
 export function GroupsListPage() {
-  const { data: groups = [], isLoading, error, refetch } = useGroups()
+  const { data: allGroups = [], isLoading, error, refetch } = useGroups()
+  const groups = allGroups.filter(g => !g.jar_mode)
+  const jarGroups = allGroups.filter(g => g.jar_mode && !g.jar_closed)
   const { data: invites = [] } = useGroupInvites()
   const { data: contacts = [] } = useContacts()
   const respondInvite = useRespondGroupInvite()
@@ -121,31 +123,57 @@ export function GroupsListPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
-        <DataState
-          loading={isLoading}
-          error={error}
-          empty={groups.length === 0}
-          emptyContent={
-            <div className="text-center py-16 text-sm text-[var(--color-muted-foreground)]">
-              No shared payments yet.{' '}
-              <Link to="/groups/new" className="text-[var(--color-primary)]">
-                Create one →
-              </Link>
-            </div>
-          }
-          onRetry={refetch}
-          loadingRows={4}
-        >
-          <div>
-            {groups.map((g, i) => (
-              <div key={g.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
-                <GroupCard group={g} />
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-semibold text-[var(--color-muted-foreground)] uppercase tracking-wide text-[11px]">Shared payments</span>
+        </div>
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+          <DataState
+            loading={isLoading}
+            error={error}
+            empty={groups.length === 0}
+            emptyContent={
+              <div className="text-center py-10 text-sm text-[var(--color-muted-foreground)]">
+                No shared payments yet.{' '}
+                <Link to="/groups/new" className="text-[var(--color-primary)]">Create one →</Link>
               </div>
-            ))}
-          </div>
-        </DataState>
+            }
+            onRetry={refetch}
+            loadingRows={4}
+          >
+            <div>
+              {groups.map((g, i) => (
+                <div key={g.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                  <GroupCard group={g} />
+                </div>
+              ))}
+            </div>
+          </DataState>
+        </div>
       </div>
+
+      {(isLoading || jarGroups.length > 0) && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-[var(--color-muted-foreground)] uppercase tracking-wide text-[11px]">Moneyboxes</span>
+          </div>
+          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+            {isLoading ? (
+              <div className="p-4 space-y-2">
+                {[1, 2].map(i => <div key={i} className="h-12 rounded-xl bg-[var(--color-card-elevated)] animate-pulse" />)}
+              </div>
+            ) : (
+              <div>
+                {jarGroups.map((g, i) => (
+                  <div key={g.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+                    <GroupCard group={g} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -42,9 +42,19 @@ Default local base URL: `http://localhost:8000/api/v1`
 
 - Only the group creator can delete the group (`403` otherwise).
 - If any member has non-zero `net_cents`, delete is blocked with `400` (`Group has unsettled balances`).
+- For `jar_mode` groups, delete is also blocked unless jar `pot_balance_cents` is zero (`400`).
 - No force override is supported.
-- On success, the backend deletes the group and cascades cleanup of related `expenses`, `settlements`, and group-scoped `activity`.
+- On success, the backend deletes the group and cascades cleanup of related `expenses`, `settlements`, `jar_contributions`, `jar_withdrawals`, and group-scoped `activity`.
 - Success response: `{ "ok": true }`.
+
+## Jar (group wallet)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/groups/{id}/jar` | Jar state (contributions, withdrawals, proportional refunds, pot balance) |
+| POST | `/groups/{id}/jar/contribute` | Member contributes to jar; amount is deducted from member wallet balance |
+| POST | `/groups/{id}/jar/withdraw` | Creator withdraws from jar; amount is credited to creator wallet balance |
+| POST | `/groups/{id}/jar/close` | Dissolve jar; remaining pot is distributed proportionally to contributors and credited to their wallet balances |
 
 ## Expenses
 

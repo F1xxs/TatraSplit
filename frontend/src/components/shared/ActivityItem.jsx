@@ -23,6 +23,8 @@ const kindMeta = {
   'group.created':      { icon: Users,     color: '#0070D2' },
   'member.joined':      { icon: UserPlus,  color: '#0070D2' },
   'reminder.sent':      { icon: Bell,      color: '#F59E0B' },
+  'jar.contributed':    { icon: Receipt,   color: '#F59E0B' },
+  'jar.withdrawn':      { icon: HandCoins, color: '#1DB954' },
 }
 
 function getTitle(item, meId) {
@@ -42,6 +44,8 @@ function getTitle(item, meId) {
     }
     case 'group.created':     return item.payload?.group_name || 'New group'
     case 'member.joined':     return `${item.payload?.actor_name || 'Someone'} joined`
+    case 'jar.contributed':   return `Contributed to ${item.payload?.group_name || 'Moneybox'}`
+    case 'jar.withdrawn':     return 'Withdrew from Moneybox'
     default: return item.kind
   }
 }
@@ -60,6 +64,10 @@ function getSubtitle(item, meId) {
       return 'Group created'
     case 'member.joined':
       return group || 'Joined group'
+    case 'jar.contributed':
+      return 'Deposit · ' + (group || 'Shared fund')
+    case 'jar.withdrawn':
+      return 'Withdrawal · ' + (group || 'Moneybox')
     default: return group || ''
   }
 }
@@ -77,6 +85,10 @@ function getAmount(item, meId) {
     }
   } else if (item.kind === 'expense.created') {
     isCredit = false
+  } else if (item.kind === 'jar.contributed') {
+    isCredit = false  // money leaving your pocket
+  } else if (item.kind === 'jar.withdrawn') {
+    isCredit = true   // money coming to your account
   }
   return { amt, currency, isCredit }
 }
