@@ -1,60 +1,113 @@
-# ── Editors & IDEs ─────────────────────────────────────────────────────────────
+# Languages
+## Python
+.venv/
+*.conda
+__pycache__/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.Python
+.ruff_cache/
+*.egg-info/
+*.mo
+*.pot
+*.py[cod]
+*.pyd
+*$py.class
+develop-eggs/
+downloads/
+eggs/
+pip-delete-this-directory.txt
+pip-log.txt
+share/python-wheels/
+
+## Node
+dist-ssr/
+dist/
+node_modules/
+package-lock.json
+
+
+# Editors & IDEs
+.idea/
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
-.idea/
-*.suo
-*.ntvs*
 *.njsproj
+*.ntvs*
 *.sln
+*.suo
 *.sw?
 
-# ── OS ─────────────────────────────────────────────────────────────────────────
+
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
+*.dSYM
+*.dSYM-*
 
-# ── Python ─────────────────────────────────────────────────────────────────────
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
+
+# Packaging / Build artifacts
+*.exe
+*.manifest
+*.o
+*.so
+*.spec
+*.zip
+assets/
+bin/
 build/
-.pytest_cache/
-.coverage
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-
-# ── Python envs ────────────────────────────────────────────────────────────────
-.venv/
-venv/
-env/
-*.conda
-
-# ── Node ───────────────────────────────────────────────────────────────────────
-node_modules/
 dist/
-dist-ssr/
-package-lock.json
+lab/
+main
+reports/
+sdist/
+tmp/
 
-# ── Logs ───────────────────────────────────────────────────────────────────────
+
+# Logs, coverage, test output
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
 *.log
 logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 
-# ── Env / secrets ──────────────────────────────────────────────────────────────
+
+# Env / Secrets / Credentials / Configs
 .env
 .env.*
 !.env.example
 *.local
+credentials.csv
+*.pem
+ssl/
 
-# ── Project specific
-.presentation
+
+# Database
+*.sql
+db.sqlite3
+db.sqlite3-journal
+instance/
+
+
+# Web / scraping / static
+.webassets-cache
+.scrapy
+docs/_build/
+
+
+# Misc
+
+
+# AI
 .playwright-mcp/
+.github/copilot-instructions.md
+.claude/
+CLAUDE.md
+
+
+# Project specific
+
