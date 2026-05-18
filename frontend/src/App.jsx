@@ -3,13 +3,15 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const ContactsPage   = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })))
-const GroupsListPage = lazy(() => import('@/pages/GroupsListPage').then((m) => ({ default: m.GroupsListPage })))
-const NewGroupPage   = lazy(() => import('@/pages/NewGroupPage').then((m) => ({ default: m.NewGroupPage })))
+const ContactsPage    = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })))
+const GroupsListPage  = lazy(() => import('@/pages/GroupsListPage').then((m) => ({ default: m.GroupsListPage })))
+const NewGroupPage    = lazy(() => import('@/pages/NewGroupPage').then((m) => ({ default: m.NewGroupPage })))
 const GroupDetailPage = lazy(() => import('@/pages/GroupDetailPage').then((m) => ({ default: m.GroupDetailPage })))
 const AddExpensePage  = lazy(() => import('@/pages/AddExpensePage').then((m) => ({ default: m.AddExpensePage })))
+const EditExpensePage = lazy(() => import('@/pages/EditExpensePage').then((m) => ({ default: m.EditExpensePage })))
 const AddReceiptPage  = lazy(() => import('@/pages/AddReceiptPage').then((m) => ({ default: m.AddReceiptPage })))
-const AdminPage      = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
+const EditReceiptPage = lazy(() => import('@/pages/EditReceiptPage').then((m) => ({ default: m.EditReceiptPage })))
+const AdminPage       = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
 
 function PageFallback() {
   return (
@@ -32,9 +34,11 @@ export default function App() {
         <Route path="groups"                           element={page(<GroupsListPage />)} />
         <Route path="groups/new"                       element={page(<NewGroupPage />)} />
         <Route path="groups/:id"                       element={page(<GroupDetailPage />)} />
-        <Route path="groups/:id/expenses/new"          element={page(<AddExpensePage />)} />
-        <Route path="groups/:id/expenses/new-receipt"  element={page(<AddReceiptPage />)} />
-        <Route path="admin"                            element={page(<AdminPage />)} />
+        <Route path="groups/:id/expenses/new"              element={page(<AddExpensePage />)} />
+        <Route path="groups/:id/expenses/:expId/edit"   element={page(<EditExpensePage />)} />
+        <Route path="groups/:id/receipts/new"           element={page(<AddReceiptPage />)} />
+        <Route path="groups/:id/receipts/:receiptId/edit" element={page(<EditReceiptPage />)} />
+        <Route path="admin"                             element={page(<AdminPage />)} />
         <Route path="*"                                element={<Navigate to="/groups" replace />} />
       </Route>
     </Routes>
