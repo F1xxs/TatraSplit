@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
 import { CategoryPicker } from '@/components/shared/CategoryPicker'
-import { useGroup } from '@/hooks/useGroups'
-import { useAddExpense } from '@/hooks/useMutations'
+import { useGroup, useGroupExpenses } from '@/hooks/useGroups'
+import { usePatchExpense, useDeleteExpense } from '@/hooks/useMutations'
 import { useMe } from '@/hooks/useMe'
 import { useToast } from '@/components/ui/toaster'
 import { getCategory } from '@/lib/format'
@@ -23,33 +23,45 @@ function isSplitValid(splitType, splitData, amountCents) {
   return false
 }
 
-export function AddExpensePage() {
-  const { id } = useParams()
+export function EditExpensePage() {
+  const { id, expId } = useParams()
   const navigate = useNavigate()
   const { data: group } = useGroup(id)
+  const { data: expenses = [] } = useGroupExpenses(id)
   const { data: me } = useMe()
-  const addExpense = useAddExpense(id)
+  const patchExpense = usePatchExpense(id)
+  const deleteExpense = useDeleteExpense(id)
   const { toast } = useToast()
 
+  const expense = expenses.find((e) => e.id === expId)
   const members = group?.members || []
   const currency = group?.currency || 'EUR'
 
-  const [description, setDescription] = useState(getCategory('food').label)
+  const [description, setDescription] = useState('')
   const [category, setCategory] = useState('food')
+  const [amount, setAmount] = useState(0)
+  const [paidBy, setPaidBy] = useState('')
+  const [splitType, setSplitType] = useState('equal')
+  const [splitData, setSplitData] = useState([])
+  const [initialized, setInitialized] = useState(false)
+
+  useEffect(() => {
+    if (!expense || initialized) return
+    setDescription(expense.description || '')
+    setCategory(expense.category || 'food')
+    setAmount(expense.amount_cents || 0)
+    setPaidBy(expense.paid_by || '')
+    const type = expense.split?.type || 'equal'
+    setSplitType(type)
+    setSplitData(expense.split?.members || defaultSplitData(type, members, expense.amount_cents || 0))
+    setInitialized(true)
+  }, [expense, members, initialized])
 
   const handleCategoryChange = (cat) => {
     if (description === getCategory(category).label) setDescription(getCategory(cat).label)
     setCategory(cat)
   }
-  const [amount, setAmount] = useState(0)
-  const [paidBy, setPaidBy] = useState(me?.id || '')
-  const [splitType, setSplitType] = useState('equal')
-  const [splitData, setSplitData] = useState(() => defaultSplitData('equal', members, 0))
 
-  // keep paid_by in sync when me loads
-  if (me?.id && !paidBy) setPaidBy(me.id)
-
-  // reinit splitData when members load or splitType changes externally
   const handleSplitTypeChange = (type) => {
     setSplitType(type)
     setSplitData(defaultSplitData(type, members, amount))
@@ -64,19 +76,40 @@ export function AddExpensePage() {
 
   const submit = async () => {
     try {
-      await addExpense.mutateAsync({
+      await patchExpense.mutateAsync({
+        expenseId: expId,
         description: description.trim(),
         category,
         amount_cents: amount,
         paid_by: paidBy,
         split: { type: splitType, members: splitData },
-        note: '',
       })
-      toast({ variant: 'success', title: 'Expense added' })
+      toast({ variant: 'success', title: 'Expense updated' })
       navigate(`/groups/${id}`)
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add expense', description: err.message })
+      toast({ variant: 'error', title: 'Could not update expense', description: err.message })
     }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteExpense.mutateAsync(expId)
+      toast({ variant: 'success', title: 'Expense deleted' })
+      navigate(`/groups/${id}`)
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not delete expense', description: err.message })
+    }
+  }
+
+  if (!expense && expenses.length > 0) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <button type="button" onClick={() => navigate(`/groups/${id}`)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+        <p className="text-sm text-[var(--color-muted-foreground)]">Expense not found.</p>
+      </div>
+    )
   }
 
   return (
@@ -90,7 +123,12 @@ export function AddExpensePage() {
         Back
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight">Add expense</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-tight">Edit expense</h1>
+        <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteExpense.isPending}>
+          {deleteExpense.isPending ? 'Deleting…' : 'Delete'}
+        </Button>
+      </div>
 
       <div className="space-y-5">
         <div>
@@ -103,7 +141,6 @@ export function AddExpensePage() {
                 setSplitData(defaultSplitData(splitType, members, v))
               }}
               currency={currency}
-              autoFocus
             />
             <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{currency}</div>
           </div>
@@ -162,8 +199,8 @@ export function AddExpensePage() {
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
-            {addExpense.isPending ? 'Saving…' : 'Add expense'}
+          <Button onClick={submit} disabled={!canSubmit || patchExpense.isPending}>
+            {patchExpense.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
       </div>

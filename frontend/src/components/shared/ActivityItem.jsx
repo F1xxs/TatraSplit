@@ -8,6 +8,9 @@ const kindMeta = {
   'expense.created':      { icon: Receipt,   color: '#0070D2' },
   'expense.updated':      { icon: Receipt,   color: '#0070D2' },
   'expense.deleted':      { icon: Trash2,    color: '#E84040' },
+  'transfer.created':     { icon: HandCoins, color: '#1DB954' },
+  'transfer.updated':     { icon: HandCoins, color: '#1DB954' },
+  'transfer.deleted':     { icon: HandCoins, color: '#E84040' },
   'settlement.created':   { icon: HandCoins, color: '#1DB954' },
   'settlement.updated':   { icon: HandCoins, color: '#1DB954' },
   'settlement.deleted':   { icon: HandCoins, color: '#E84040' },
@@ -24,6 +27,8 @@ function getTitle(item, meId) {
       return item.payload?.description || 'Expense'
     case 'expense.deleted':
       return item.payload?.description || 'Expense deleted'
+    case 'transfer.created':
+    case 'transfer.updated':
     case 'settlement.created':
     case 'settlement.updated': {
       const fromName = item.payload?.from_name || 'someone'
@@ -34,8 +39,9 @@ function getTitle(item, meId) {
         return `Payment to ${toName}`
       return `${fromName} paid ${toName}`
     }
+    case 'transfer.deleted':
     case 'settlement.deleted':
-      return 'Settlement removed'
+      return 'Transfer removed'
     case 'group.created':
       return item.payload?.name || 'New group'
     case 'member.joined':
@@ -53,9 +59,12 @@ function getSubtitle(item) {
     case 'expense.updated':
     case 'expense.deleted':
       return group || ''
+    case 'transfer.created':
+    case 'transfer.updated':
     case 'settlement.created':
     case 'settlement.updated':
       return `Payment${group ? ` · ${group}` : ''}`
+    case 'transfer.deleted':
     case 'settlement.deleted':
       return group || ''
     case 'group.created':
@@ -73,7 +82,7 @@ function getAmount(item, meId) {
   const amt = item.payload.amount_cents
   const currency = item.payload?.currency || 'EUR'
   let isCredit = true
-  if (item.kind === 'settlement.created' || item.kind === 'settlement.updated') {
+  if (['transfer.created', 'transfer.updated', 'settlement.created', 'settlement.updated'].includes(item.kind)) {
     isCredit = !(item.payload?.from_user && meId && item.payload.from_user === meId)
   } else if (item.kind === 'expense.created' || item.kind === 'expense.updated') {
     isCredit = false

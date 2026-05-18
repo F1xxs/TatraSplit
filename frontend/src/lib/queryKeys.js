@@ -5,7 +5,8 @@ export const qk = {
   contacts: ['contacts'],
   group: (id) => ['group', id],
   groupExpenses: (id) => ['group', id, 'expenses'],
+  groupReceipts: (id) => ['group', id, 'receipts'],
   groupBalances: (id) => ['group', id, 'balances'],
   groupActivity: (id) => ['group', id, 'activity'],
-  groupSettlements: (id) => ['group', id, 'settlements'],
+  groupTransfers: (id) => ['group', id, 'transfers'],
 }

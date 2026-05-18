@@ -100,11 +100,11 @@ export function useScanReceipt(groupId) {
   })
 }
 
-export function useSettle(groupId) {
+export function useCreateTransfer(groupId) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (body) =>
-      (await api.post(`/groups/${groupId}/settlements`, body)).data,
+      (await api.post(`/groups/${groupId}/transfers`, body)).data,
     onSuccess: () => {
       invalidateGroup(qc, groupId)
       invalidateGlobal(qc)
@@ -112,11 +112,11 @@ export function useSettle(groupId) {
   })
 }
 
-export function usePatchSettlement(groupId) {
+export function usePatchTransfer(groupId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ settlementId, ...body }) =>
-      (await api.patch(`/groups/${groupId}/settlements/${settlementId}`, body)).data,
+    mutationFn: async ({ transferId, ...body }) =>
+      (await api.patch(`/groups/${groupId}/transfers/${transferId}`, body)).data,
     onSuccess: () => {
       invalidateGroup(qc, groupId)
       invalidateGlobal(qc)
@@ -124,14 +124,47 @@ export function usePatchSettlement(groupId) {
   })
 }
 
-export function useDeleteSettlement(groupId) {
+export function useDeleteTransfer(groupId) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (settlementId) =>
-      (await api.delete(`/groups/${groupId}/settlements/${settlementId}`)).data,
+    mutationFn: async (transferId) =>
+      (await api.delete(`/groups/${groupId}/transfers/${transferId}`)).data,
     onSuccess: () => {
       invalidateGroup(qc, groupId)
       invalidateGlobal(qc)
+    },
+  })
+}
+
+export function useCreateReceipt(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (body) =>
+      (await api.post(`/groups/${groupId}/receipts`, body)).data,
+    onSuccess: () => {
+      invalidateGroup(qc, groupId)
+    },
+  })
+}
+
+export function usePatchReceipt(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ receiptId, ...body }) =>
+      (await api.patch(`/groups/${groupId}/receipts/${receiptId}`, body)).data,
+    onSuccess: () => {
+      invalidateGroup(qc, groupId)
+    },
+  })
+}
+
+export function useDeleteReceipt(groupId) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (receiptId) =>
+      (await api.delete(`/groups/${groupId}/receipts/${receiptId}`)).data,
+    onSuccess: () => {
+      invalidateGroup(qc, groupId)
     },
   })
 }

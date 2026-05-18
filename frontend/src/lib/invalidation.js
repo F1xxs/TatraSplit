@@ -10,7 +10,8 @@ export function invalidateGlobal(qc) {
 export function invalidateGroup(qc, id) {
   qc.invalidateQueries({ queryKey: qk.group(id) })
   qc.invalidateQueries({ queryKey: qk.groupExpenses(id) })
+  qc.invalidateQueries({ queryKey: qk.groupReceipts(id) })
   qc.invalidateQueries({ queryKey: qk.groupBalances(id) })
   qc.invalidateQueries({ queryKey: qk.groupActivity(id) })
-  qc.invalidateQueries({ queryKey: qk.groupSettlements(id) })
+  qc.invalidateQueries({ queryKey: qk.groupTransfers(id) })
 }

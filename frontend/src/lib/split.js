@@ -1,3 +1,18 @@
+export function computeShare(split, amountCents, userId) {
+  if (!split || !split.members) return 0
+  const member = split.members.find((m) => m.user_id === userId)
+  if (!member) return 0
+  const type = split.type || 'equal'
+  if (type === 'custom') return member.value
+  if (type === 'percentage') return Math.round((member.value / 100) * amountCents)
+  if (type === 'shares') {
+    const total = split.members.reduce((s, m) => s + m.value, 0)
+    return total > 0 ? Math.round((member.value / total) * amountCents) : 0
+  }
+  const shares = distributeEqualSplit(amountCents, split.members.map((m) => m.user_id))
+  return shares.find((s) => s.user_id === userId)?.share_cents ?? 0
+}
+
 export function distributeEqualSplit(amountCents, memberIds = []) {
   const n = memberIds.length
   if (n === 0) return []

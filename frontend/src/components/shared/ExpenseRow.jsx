@@ -1,19 +1,18 @@
 import { CategoryIcon } from './CategoryIcon'
 import { formatMoney } from '@/lib/format'
+import { computeShare } from '@/lib/split'
 import { cn } from '@/lib/utils'
 
-export function ExpenseRow({ expense, me, members = [], onClick, className }) {
+export function ExpenseRow({ expense, me, members = [], currency = 'EUR', onClick, className }) {
   const paidByMe = me && expense.paid_by === me.id
-  const myShare = me && (expense.split || []).find((s) => s.user_id === me.id)?.share_cents
+  const myShare = me ? computeShare(expense.split, expense.amount_cents, me.id) : 0
   const myImpactCents = paidByMe
-    ? expense.amount_cents - (myShare ?? 0)
-    : myShare != null
-      ? -myShare
-      : 0
+    ? expense.amount_cents - myShare
+    : me ? -myShare : 0
 
   const payer = members.find((m) => m.id === expense.paid_by)
   const payerName = payer?.display_name || 'someone'
-  const isReceipt = expense.expense_type === 'receipt'
+  const isReceipt = !!expense.receipt_id
 
   return (
     <button
@@ -40,7 +39,7 @@ export function ExpenseRow({ expense, me, members = [], onClick, className }) {
       </div>
       <div className="shrink-0 text-right">
         <div className="text-sm font-semibold tabular-nums">
-          {formatMoney(expense.amount_cents, expense.currency)}
+          {formatMoney(expense.amount_cents, currency)}
         </div>
         {myImpactCents !== 0 && me != null && (
           <div
@@ -48,8 +47,8 @@ export function ExpenseRow({ expense, me, members = [], onClick, className }) {
             style={{ color: myImpactCents > 0 ? '#1DB954' : '#E84040' }}
           >
             {myImpactCents > 0
-              ? `+${formatMoney(myImpactCents, expense.currency)}`
-              : `−${formatMoney(Math.abs(myImpactCents), expense.currency)}`}
+              ? `+${formatMoney(myImpactCents, currency)}`
+              : `−${formatMoney(Math.abs(myImpactCents), currency)}`}
           </div>
         )}
       </div>

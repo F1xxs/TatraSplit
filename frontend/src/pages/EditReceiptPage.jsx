@@ -1,46 +1,54 @@
-import { useRef, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Loader2, ImageIcon } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/shared/MoneyInput'
 import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
-import { useGroup } from '@/hooks/useGroups'
-import { useCreateReceipt, useScanReceipt } from '@/hooks/useMutations'
+import { useGroup, useGroupReceipts } from '@/hooks/useGroups'
+import { usePatchReceipt, useDeleteReceipt } from '@/hooks/useMutations'
 import { useMe } from '@/hooks/useMe'
 import { useToast } from '@/components/ui/toaster'
 import { formatMoney } from '@/lib/format'
 
-function blankItem(members) {
-  return {
-    name: '',
-    amount_cents: 0,
-    splitType: 'equal',
-    splitData: defaultSplitData('equal', members, 0),
-  }
-}
-
-export function AddReceiptPage() {
-  const { id } = useParams()
+export function EditReceiptPage() {
+  const { id, receiptId } = useParams()
   const navigate = useNavigate()
   const { data: group } = useGroup(id)
+  const { data: receipts = [] } = useGroupReceipts(id)
   const { data: me } = useMe()
-  const createReceipt = useCreateReceipt(id)
-  const scanReceipt = useScanReceipt(id)
+  const patchReceipt = usePatchReceipt(id)
+  const deleteReceipt = useDeleteReceipt(id)
   const { toast } = useToast()
-  const fileRef = useRef(null)
 
+  const receipt = receipts.find((r) => r.id === receiptId)
   const members = group?.members || []
   const currency = group?.currency || 'EUR'
 
   const [place, setPlace] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
-  const [defaultPayer, setDefaultPayer] = useState(me?.id || '')
-  const [items, setItems] = useState([blankItem(members)])
+  const [defaultPayer, setDefaultPayer] = useState('')
+  const [items, setItems] = useState([])
+  const [initialized, setInitialized] = useState(false)
 
-  if (me?.id && !defaultPayer) setDefaultPayer(me.id)
+  useEffect(() => {
+    if (!receipt || initialized) return
+    setPlace(receipt.place || '')
+    setLocation(receipt.location || '')
+    setDate(receipt.date || '')
+    setDefaultPayer(receipt.metadata?.default_payer || '')
+    setItems(
+      (receipt.items || []).map((item) => ({
+        name: item.name || '',
+        amount_cents: item.amount_cents || 0,
+        splitType: item.split?.type || 'equal',
+        splitData: item.split?.members || defaultSplitData('equal', members, item.amount_cents || 0),
+      })),
+    )
+    setInitialized(true)
+  }, [receipt, members, initialized])
 
   const totalCents = items.reduce((a, i) => a + (i.amount_cents || 0), 0)
 
@@ -58,31 +66,8 @@ export function AddReceiptPage() {
     }))
   }
 
-  const addItem = () => setItems((prev) => [...prev, blankItem(members)])
+  const addItem = () => setItems((prev) => [...prev, { name: '', amount_cents: 0, splitType: 'equal', splitData: defaultSplitData('equal', members, 0) }])
   const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx))
-
-  const handleScan = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-    try {
-      const data = await scanReceipt.mutateAsync(file)
-      if (data?.place) setPlace(data.place)
-      if (data?.items?.length) {
-        setItems(
-          data.items.map((item) => ({
-            name: item.name || '',
-            amount_cents: item.amount_cents || 0,
-            splitType: 'equal',
-            splitData: defaultSplitData('equal', members, item.amount_cents || 0),
-          })),
-        )
-      }
-      toast({ variant: 'success', title: 'Receipt scanned' })
-    } catch (err) {
-      toast({ variant: 'error', title: 'Could not scan receipt', description: err.message })
-    }
-  }
 
   const canSubmit =
     items.length > 0 &&
@@ -90,7 +75,8 @@ export function AddReceiptPage() {
 
   const submit = async () => {
     try {
-      await createReceipt.mutateAsync({
+      await patchReceipt.mutateAsync({
+        receiptId,
         place: place.trim(),
         location: location.trim(),
         date: date || null,
@@ -105,11 +91,32 @@ export function AddReceiptPage() {
           split: { type: item.splitType, members: item.splitData },
         })),
       })
-      toast({ variant: 'success', title: 'Receipt saved' })
+      toast({ variant: 'success', title: 'Receipt updated' })
       navigate(`/groups/${id}`)
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not save receipt', description: err.message })
+      toast({ variant: 'error', title: 'Could not update receipt', description: err.message })
     }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteReceipt.mutateAsync(receiptId)
+      toast({ variant: 'success', title: 'Receipt deleted' })
+      navigate(`/groups/${id}`)
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not delete receipt', description: err.message })
+    }
+  }
+
+  if (!receipt && receipts.length > 0) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        <button type="button" onClick={() => navigate(`/groups/${id}`)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </button>
+        <p className="text-sm text-[var(--color-muted-foreground)]">Receipt not found.</p>
+      </div>
+    )
   }
 
   return (
@@ -124,19 +131,9 @@ export function AddReceiptPage() {
       </button>
 
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Add receipt</h1>
-        <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={handleScan} />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => fileRef.current?.click()}
-          disabled={scanReceipt.isPending}
-        >
-          {scanReceipt.isPending ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning…</>
-          ) : (
-            <><ImageIcon className="h-3.5 w-3.5" /> Scan receipt</>
-          )}
+        <h1 className="text-xl font-semibold tracking-tight">Edit receipt</h1>
+        <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteReceipt.isPending}>
+          {deleteReceipt.isPending ? 'Deleting…' : 'Delete'}
         </Button>
       </div>
 
@@ -260,8 +257,8 @@ export function AddReceiptPage() {
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || createReceipt.isPending}>
-            {createReceipt.isPending ? 'Saving…' : `Save receipt · ${formatMoney(totalCents, currency)}`}
+          <Button onClick={submit} disabled={!canSubmit || patchReceipt.isPending}>
+            {patchReceipt.isPending ? 'Saving…' : 'Save changes'}
           </Button>
         </div>
       </div>
