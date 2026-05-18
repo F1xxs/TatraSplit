@@ -1,386 +1,174 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Camera, ImageIcon, Loader2, ArrowLeft } from 'lucide-react'
-import { Sheet, SheetHeader, SheetTitle, SheetDescription, SheetContent, SheetFooter } from '@/components/ui/sheet'
+import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Avatar } from '@/components/ui/avatar'
 import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor } from '@/components/shared/SplitEditor'
+import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
+import { CategoryPicker } from '@/components/shared/CategoryPicker'
 import { useGroup } from '@/hooks/useGroups'
 import { useAddExpense } from '@/hooks/useMutations'
 import { useMe } from '@/hooks/useMe'
-import { CATEGORIES, formatMoney } from '@/lib/format'
 import { useToast } from '@/components/ui/toaster'
-import { cn } from '@/lib/utils'
-import { api } from '@/lib/api'
-import { distributeEqualSplit, getCustomSplitBudgetStatus, isSplitReady, resolveSplitPayload } from '@/lib/split'
+import { getCategory } from '@/lib/format'
+
+function isSplitValid(splitType, splitData, amountCents) {
+  if (!splitData.length) return false
+  if (splitType === 'equal') return splitData.some((s) => s.value > 0)
+  const sum = splitData.reduce((a, s) => a + (s.value || 0), 0)
+  if (splitType === 'custom') return Math.abs(sum - amountCents) < 1
+  if (splitType === 'percentage') return Math.abs(sum - 100) < 0.01
+  if (splitType === 'shares') return sum > 0
+  return false
+}
 
 export function AddExpensePage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  return (
-    <AddExpenseSheet
-      open
-      onOpenChange={(o) => {
-        if (!o) navigate(`/groups/${id}`)
-      }}
-      groupId={id}
-    />
-  )
-}
-
-function computeReceiptSplit(items, assignments) {
-  const totals = {}
-  items.forEach((item, idx) => {
-    const set = assignments[idx]
-    if (!set || set.size === 0) return
-    const arr = [...set]
-    const base = Math.floor(item.amount_cents / arr.length)
-    const rem = item.amount_cents - base * arr.length
-    arr.forEach((uid, i) => {
-      totals[uid] = (totals[uid] || 0) + base + (i < rem ? 1 : 0)
-    })
-  })
-  return Object.entries(totals).map(([user_id, share_cents]) => ({ user_id, share_cents }))
-}
-
-export function AddExpenseSheet({ open, onOpenChange, groupId, group: groupProp, initialDescription = '', initialAmount = 0, onAfterSubmit }) {
-  const { data: groupFetched } = useGroup(groupId)
-  const group = groupProp || groupFetched
+  const { data: group } = useGroup(id)
   const { data: me } = useMe()
-  const members = group?.members || []
+  const addExpense = useAddExpense(id)
   const { toast } = useToast()
 
-  const [amount, setAmount] = useState(initialAmount)
-  const [description, setDescription] = useState(initialDescription || 'Food')
+  const members = group?.members || []
+  const currency = group?.currency || 'EUR'
+
+  const [description, setDescription] = useState(getCategory('food').label)
   const [category, setCategory] = useState('food')
+
+  const handleCategoryChange = (cat) => {
+    if (description === getCategory(category).label) setDescription(getCategory(cat).label)
+    setCategory(cat)
+  }
+  const [amount, setAmount] = useState(0)
+  const [paidBy, setPaidBy] = useState(me?.id || '')
   const [splitType, setSplitType] = useState('equal')
-  const [split, setSplit] = useState([])
+  const [splitData, setSplitData] = useState(() => defaultSplitData('equal', members, 0))
 
-  const [scanning, setScanning] = useState(false)
-  const [receiptData, setReceiptData] = useState(null)
-  const [assignments, setAssignments] = useState([])
+  // keep paid_by in sync when me loads
+  if (me?.id && !paidBy) setPaidBy(me.id)
 
-  const fileRef = useRef(null)
-  const galleryRef = useRef(null)
-
-  useEffect(() => {
-    if (open) {
-      setAmount(initialAmount)
-      setDescription(initialDescription || 'Food')
-      setCategory('food')
-      setSplitType('equal')
-      setSplit([])
-      setReceiptData(null)
-      setAssignments([])
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open])
-
-  useEffect(() => {
-    if (open && splitType === 'equal' && members.length && amount > 0) {
-      setSplit(distributeEqualSplit(amount, members.map((m) => m.id)))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, splitType, amount, members.length])
-
-  useEffect(() => {
-    if (receiptData) {
-      setAssignments(receiptData.items.map(() => new Set()))
-    }
-  }, [receiptData])
-
-  const handleScanFile = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
-    setScanning(true)
-    try {
-      const form = new FormData()
-      form.append('image', file)
-      const { data } = await api.post(`/groups/${groupId}/receipts/scan`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 30000,
-      })
-      setReceiptData(data)
-    } catch (err) {
-      toast({ variant: 'error', title: 'Could not scan receipt', description: err.response?.data?.detail || err.message })
-    } finally {
-      setScanning(false)
-    }
+  // reinit splitData when members load or splitType changes externally
+  const handleSplitTypeChange = (type) => {
+    setSplitType(type)
+    setSplitData(defaultSplitData(type, members, amount))
   }
 
-  const toggleAssignment = (itemIdx, userId) => {
-    setAssignments((prev) => {
-      const next = prev.map((s) => new Set(s))
-      if (next[itemIdx].has(userId)) next[itemIdx].delete(userId)
-      else next[itemIdx].add(userId)
-      return next
-    })
-  }
-
-  const assignAll = (itemIdx) => {
-    setAssignments((prev) => {
-      const next = prev.map((s) => new Set(s))
-      next[itemIdx] = new Set(members.map((m) => m.id))
-      return next
-    })
-  }
-
-  const addExpense = useAddExpense(groupId)
-
-  const canSubmit = useMemo(() => {
-    if (amount <= 0) return false
-    if (!description.trim()) return false
-    if (!me?.id) return false
-    if (!isSplitReady({ splitType, split, amountCents: amount })) return false
-    return true
-  }, [amount, description, me, split, splitType])
-  const splitBudgetStatus = useMemo(
-    () => getCustomSplitBudgetStatus({ splitType, split, amountCents: amount }),
-    [splitType, split, amount],
-  )
-  const splitGuidance = useMemo(() => {
-    if (splitType !== 'custom' || amount <= 0) return null
-    if (splitBudgetStatus.state === 'exact') {
-      return {
-        tone: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
-        text: 'Split is exact. Ready to save.',
-      }
-    }
-    if (splitBudgetStatus.state === 'under') {
-      return {
-        tone: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
-        text: `${formatMoney(splitBudgetStatus.remainderCents, group?.currency || 'EUR')} left to assign before saving.`,
-      }
-    }
-    return {
-      tone: 'text-[var(--color-destructive)] bg-[var(--color-destructive)]/10',
-      text: `${formatMoney(splitBudgetStatus.remainderCents, group?.currency || 'EUR')} over budget. Reduce shares to continue.`,
-    }
-  }, [splitType, amount, splitBudgetStatus, group?.currency])
-
-  const receiptSplit = receiptData ? computeReceiptSplit(receiptData.items, assignments) : []
-  const receiptTotal = receiptSplit.reduce((a, s) => a + s.share_cents, 0)
-  const unassignedCount = assignments.filter((s) => s && s.size === 0).length
-  const canSubmitReceipt = receiptSplit.length > 0 && !addExpense.isPending
+  const canSubmit =
+    !!description.trim() &&
+    amount > 0 &&
+    !!paidBy &&
+    members.length > 0 &&
+    isSplitValid(splitType, splitData, amount)
 
   const submit = async () => {
     try {
-      const splitPayload = resolveSplitPayload({
-        splitType,
-        split,
-        allMemberIds: members.map((m) => m.id),
-      })
       await addExpense.mutateAsync({
         description: description.trim(),
         category,
+        expense_type: 'regular',
         amount_cents: amount,
-        currency: group?.currency || 'EUR',
-        paid_by: me.id,
-        ...splitPayload,
+        paid_by: paidBy,
+        split_type: splitType,
+        split_data: splitData,
+        items: [],
       })
       toast({ variant: 'success', title: 'Expense added' })
-      onOpenChange?.(false)
-      await onAfterSubmit?.()
+      navigate(`/groups/${id}`)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not add expense', description: err.message })
     }
   }
 
-  const submitReceipt = async () => {
-    try {
-      await addExpense.mutateAsync({
-        description: receiptData.description || 'Receipt',
-        category: 'food',
-        amount_cents: receiptTotal,
-        currency: receiptData.currency || 'EUR',
-        paid_by: me.id,
-        split_type: 'custom',
-        custom_split: receiptSplit,
-      })
-      toast({ variant: 'success', title: 'Receipt expense added' })
-      onOpenChange?.(false)
-      await onAfterSubmit?.()
-    } catch (err) {
-      toast({ variant: 'error', title: 'Could not save expense', description: err.message })
-    }
-  }
-
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} side="right">
-      <SheetHeader>
-        {receiptData ? (
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setReceiptData(null)} className="p-1 rounded-md hover:bg-[var(--color-secondary)]">
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <div>
-              <SheetTitle>Split receipt</SheetTitle>
-              <SheetDescription>{receiptData.description} · {formatMoney(receiptData.amount_cents, receiptData.currency)}</SheetDescription>
-            </div>
+    <div className="space-y-6 max-w-2xl mx-auto">
+      <button
+        type="button"
+        onClick={() => navigate(`/groups/${id}`)}
+        className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </button>
+
+      <h1 className="text-xl font-semibold tracking-tight">Add expense</h1>
+
+      <div className="space-y-5">
+        <div>
+          <Label>Amount</Label>
+          <div className="mt-2 rounded-2xl bg-[var(--color-secondary)] py-8">
+            <MoneyInput
+              value={amount}
+              onChange={(v) => {
+                setAmount(v)
+                setSplitData(defaultSplitData(splitType, members, v))
+              }}
+              currency={currency}
+              autoFocus
+            />
+            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{currency}</div>
           </div>
-        ) : (
-          <>
-            <SheetTitle>Add expense</SheetTitle>
-            <SheetDescription>{group ? `Splitting in ${group.name}` : ''}</SheetDescription>
-          </>
-        )}
-      </SheetHeader>
+        </div>
 
-      {receiptData ? (
-        <>
-          <SheetContent className="space-y-3">
-            {/* Per-person totals */}
-            {receiptSplit.length > 0 && (
-              <div className="flex flex-wrap gap-2 rounded-xl bg-[var(--color-secondary)] px-3 py-2.5">
-                {receiptSplit.map(({ user_id, share_cents }) => {
-                  const m = members.find((x) => x.id === user_id)
-                  return (
-                    <div key={user_id} className="flex items-center gap-1.5 text-xs">
-                      <Avatar name={m?.display_name} color={m?.color} size="xs" />
-                      <span className="font-semibold tabular-nums">{formatMoney(share_cents, receiptData.currency)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+        <div>
+          <Label htmlFor="desc">Description</Label>
+          <Input
+            id="desc"
+            className="mt-2"
+            placeholder="Groceries, dinner, tickets…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
 
-            {unassignedCount > 0 && (
-              <div className="rounded-lg bg-[var(--color-warning)]/10 text-[var(--color-warning)] px-3 py-2 text-xs">
-                {unassignedCount} item{unassignedCount > 1 ? 's' : ''} unassigned — won't be included
-              </div>
-            )}
+        <div>
+          <Label>Category</Label>
+          <div className="mt-2">
+            <CategoryPicker value={category} onChange={handleCategoryChange} />
+          </div>
+        </div>
 
-            {receiptData.items.map((item, idx) => (
-              <div key={idx} className="rounded-xl border border-[var(--color-border)] p-3 space-y-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium truncate">{item.name}</span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="tabular-nums text-sm text-[var(--color-muted-foreground)]">{formatMoney(item.amount_cents, receiptData.currency)}</span>
-                    {assignments[idx]?.size !== members.length && (
-                      <button type="button" onClick={() => assignAll(idx)} className="text-[10px] text-[var(--color-primary)] font-medium hover:underline">All</button>
-                    )}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {members.map((m) => {
-                    const assigned = assignments[idx]?.has(m.id)
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => toggleAssignment(idx, m.id)}
-                        className={cn(
-                          'flex flex-col items-center gap-1 rounded-xl px-2 py-1.5 transition-all',
-                          assigned
-                            ? 'bg-[var(--color-primary)]/15 ring-1 ring-[var(--color-primary)]'
-                            : 'bg-[var(--color-secondary)] opacity-50 hover:opacity-80',
-                        )}
-                      >
-                        <Avatar name={m.display_name} color={m.color} size="sm" />
-                        <span className="text-[10px] font-medium max-w-[48px] truncate">{m.display_name?.split(' ')[0] || m.handle}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+        <div>
+          <Label htmlFor="paidBy">Paid by</Label>
+          <select
+            id="paidBy"
+            value={paidBy}
+            onChange={(e) => setPaidBy(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm outline-none focus:border-[var(--color-primary)]"
+          >
+            <option value="">Select member</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.display_name}{m.id === me?.id ? ' (you)' : ''}
+              </option>
             ))}
-          </SheetContent>
+          </select>
+        </div>
 
-          <SheetFooter>
-            <Button variant="ghost" onClick={() => setReceiptData(null)}>Back</Button>
-            <Button onClick={submitReceipt} disabled={!canSubmitReceipt}>
-              {addExpense.isPending ? 'Saving…' : `Add ${formatMoney(receiptTotal, receiptData.currency)}`}
-            </Button>
-          </SheetFooter>
-        </>
-      ) : (
-        <>
-          <SheetContent className="space-y-6">
-            {/* Hidden file inputs */}
-            <input ref={fileRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={handleScanFile} />
-            <input ref={galleryRef} type="file" accept="image/*" className="sr-only" onChange={handleScanFile} />
+        <div>
+          <Label>Split</Label>
+          <div className="mt-2">
+            <SplitEditor
+              members={members}
+              amountCents={amount}
+              currency={currency}
+              splitType={splitType}
+              onSplitTypeChange={handleSplitTypeChange}
+              splitData={splitData}
+              onSplitDataChange={setSplitData}
+              payerId={paidBy}
+            />
+          </div>
+        </div>
 
-            {scanning ? (
-              <div className="w-full flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] py-2.5 text-sm text-[var(--color-muted-foreground)]">
-                <Loader2 className="h-4 w-4 animate-spin" /> Scanning receipt…
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => fileRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] py-2.5 text-sm text-[var(--color-muted-foreground)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors">
-                  <Camera className="h-4 w-4" /> Camera
-                </button>
-                <button type="button" onClick={() => galleryRef.current?.click()}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--color-border)] py-2.5 text-sm text-[var(--color-muted-foreground)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors">
-                  <ImageIcon className="h-4 w-4" /> Gallery
-                </button>
-              </div>
-            )}
-
-            <div className="rounded-2xl bg-[var(--color-secondary)] py-8">
-              <MoneyInput value={amount} onChange={setAmount} currency={group?.currency || 'EUR'} autoFocus />
-              <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{group?.currency || 'EUR'}</div>
-            </div>
-
-            <div>
-              <Label htmlFor="desc">Description</Label>
-              <Input id="desc" className="mt-2" placeholder="Groceries at Kaufland" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-
-            <div>
-              <Label>Category</Label>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {CATEGORIES.map((c) => {
-                  const active = category === c.id
-                  return (
-                    <button key={c.id} type="button" onClick={() => {
-                      setCategory(c.id)
-                      setDescription((prev) => {
-                        const isDefault = CATEGORIES.some((cat) => cat.label === prev)
-                        if (!prev.trim() || isDefault) return c.label
-                        return prev
-                      })
-                    }}
-                      className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-all',
-                        active ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/15 text-[var(--color-foreground)]'
-                               : 'border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]')}>
-                      <span>{c.emoji}</span>{c.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div>
-              <Label>Split between</Label>
-              <div className="mt-2">
-                <SplitEditor members={members} amountCents={amount} currency={group?.currency || 'EUR'}
-                  splitType={splitType} onSplitTypeChange={setSplitType} split={split} onSplitChange={setSplit} payerId={me?.id} />
-              </div>
-              {splitGuidance && (
-                <div className={cn('mt-2 rounded-lg px-3 py-2 text-xs', splitGuidance.tone)}>
-                  {splitGuidance.text}
-                </div>
-              )}
-            </div>
-          </SheetContent>
-
-          <SheetFooter>
-            <Button variant="ghost" onClick={() => onOpenChange?.(false)}>Cancel</Button>
-            <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
-              {addExpense.isPending
-                ? 'Saving…'
-                : splitType === 'custom' && splitBudgetStatus.state !== 'exact'
-                  ? 'Fix split to continue'
-                  : 'Confirm'}
-            </Button>
-          </SheetFooter>
-        </>
-      )}
-    </Sheet>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
+          <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
+            {addExpense.isPending ? 'Saving…' : 'Add expense'}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }

@@ -1,74 +1,34 @@
-import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { QRCodeSVG } from 'qrcode.react'
-import { ArrowLeft, Search, UserPlus, UserMinus, Share2, Copy, Check } from 'lucide-react'
+import { useState } from 'react'
+import { Copy, Check, Share2, UserMinus, UserPlus } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { DataState } from '@/components/shared/DataState'
-import { useMe } from '@/hooks/useMe'
-import {
-  useContacts,
-  useAddContact,
-  useRemoveContact,
-  useUserSearch,
-} from '@/hooks/useContacts'
+import { useContacts } from '@/hooks/useContacts'
+import { useAddContact, useRemoveContact } from '@/hooks/useMutations'
 import { useToast } from '@/components/ui/toaster'
+import { api } from '@/lib/api'
 
 export function ContactsPage() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [query, setQuery] = useState('')
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const handledInviteRef = useRef('')
-  const { data: me } = useMe()
-  const { toast } = useToast()
   const { data: contacts = [], isLoading, error, refetch } = useContacts()
-  const { data: users = [], isLoading: searching } = useUserSearch(query)
   const addContact = useAddContact()
   const removeContact = useRemoveContact()
+  const { toast } = useToast()
 
-  const contactByUserId = new Map(contacts.map((c) => [c.contact_user_id, c]))
-  const searchResults = users.filter((u) => u.id !== me?.id)
-  const inviteHandle = searchParams.get('add')?.trim() || ''
-  const backTo = location.state?.from || '/groups'
-  const backState = location.state?.returnState
-  const inviteUrl = me?.handle
-    ? `${window.location.origin}/contacts?add=${encodeURIComponent(me.handle)}`
-    : ''
+  const [handle, setHandle] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareData, setShareData] = useState(null)
+  const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    if (!inviteHandle || handledInviteRef.current === inviteHandle || !me?.handle) return
-    handledInviteRef.current = inviteHandle
-
-    if (inviteHandle === me.handle) {
-      const next = new URLSearchParams(searchParams)
-      next.delete('add')
-      setSearchParams(next, { replace: true })
-      return
-    }
-
-    ;(async () => {
-      try {
-        await addContact.mutateAsync({ handle: inviteHandle })
-        toast({ variant: 'success', title: `Contact ${inviteHandle} added` })
-      } catch (err) {
-        toast({ variant: 'error', title: 'Could not add contact from link', description: err.message })
-      } finally {
-        const next = new URLSearchParams(searchParams)
-        next.delete('add')
-        setSearchParams(next, { replace: true })
-      }
-    })()
-  }, [inviteHandle, me?.handle, addContact, searchParams, setSearchParams, toast])
-
-  const onAdd = async (userId) => {
+  const onAdd = async (e) => {
+    e.preventDefault()
+    const trimmed = handle.trim()
+    if (!trimmed) return
     try {
-      await addContact.mutateAsync({ user_id: userId })
-      toast({ variant: 'success', title: 'Contact added' })
+      await addContact.mutateAsync(trimmed)
+      toast({ variant: 'success', title: `${trimmed} added` })
+      setHandle('')
     } catch (err) {
       toast({ variant: 'error', title: 'Could not add contact', description: err.message })
     }
@@ -83,118 +43,63 @@ export function ContactsPage() {
     }
   }
 
-  const copyInvite = async () => {
-    if (!inviteUrl) return
+  const openShare = async () => {
     try {
-      await navigator.clipboard.writeText(inviteUrl)
+      const data = (await api.get('/contacts/share')).data
+      setShareData(data)
+      setShareOpen(true)
+    } catch (err) {
+      toast({ variant: 'error', title: 'Could not load share info', description: err.message })
+    }
+  }
+
+  const copyHandle = async () => {
+    if (!shareData?.handle) return
+    try {
+      await navigator.clipboard.writeText(shareData.share_text || shareData.handle)
       setCopied(true)
-      toast({ variant: 'success', title: 'Invite link copied' })
+      toast({ variant: 'success', title: 'Copied!' })
       setTimeout(() => setCopied(false), 1800)
     } catch {
       toast({ variant: 'error', title: 'Copy failed' })
     }
   }
 
-  const shareInvite = async () => {
-    if (!inviteUrl) return
-    if (!navigator.share) return copyInvite()
-    try {
-      await navigator.share({
-        title: 'Add me on TatraSplit',
-        url: inviteUrl,
-      })
-    } catch {
-      // user cancelled
-    }
-  }
-
-  const goBack = () => {
-    if (window.history.length > 1) {
-      navigate(-1)
-      return
-    }
-    navigate(backTo, { replace: true, state: backState })
-  }
-
   return (
-    <div className="space-y-4">
-      <button
-        type="button"
-        onClick={goBack}
-        className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </button>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-tight">Contacts</h1>
+        <Button size="sm" variant="outline" onClick={openShare}>
+          <Share2 className="h-3.5 w-3.5" />
+          Share my handle
+        </Button>
+      </div>
 
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold tracking-tight">Contacts</h1>
-          <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)}>
-            <Share2 className="h-3.5 w-3.5" />
-            Invite
+      <form onSubmit={onAdd} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
+        <div className="text-sm font-medium">Add contact</div>
+        <div className="flex gap-2">
+          <Input
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            placeholder="@handle"
+            className="flex-1"
+          />
+          <Button type="submit" size="sm" disabled={!handle.trim() || addContact.isPending}>
+            <UserPlus className="h-3.5 w-3.5" />
+            Add
           </Button>
         </div>
-        <p className="text-sm text-[var(--color-muted-foreground)] mt-1">
-          Save people you split with often.
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-3">
-        <label htmlFor="contacts-search" className="text-sm font-medium">Find users</label>
-        <div className="relative">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-muted-foreground)]" />
-          <Input
-            id="contacts-search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by handle or name"
-            className="pl-9"
-          />
-        </div>
-        {query.trim() && (
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card-elevated)] overflow-hidden">
-            {searching ? (
-              <div className="px-4 py-3 text-sm text-[var(--color-muted-foreground)]">Searching…</div>
-            ) : searchResults.length === 0 ? (
-              <div className="px-4 py-3 text-sm text-[var(--color-muted-foreground)]">No users found.</div>
-            ) : (
-              searchResults.map((u, i) => {
-                const existing = contactByUserId.get(u.id)
-                return (
-                  <div key={u.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      <Avatar name={u.display_name} color={u.color} size="sm" />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{u.display_name}</div>
-                        <div className="text-xs text-[var(--color-muted-foreground)] truncate">{u.handle}</div>
-                      </div>
-                      {existing ? (
-                        <Button size="sm" variant="outline" onClick={() => onRemove(existing.id)} disabled={removeContact.isPending}>
-                          <UserMinus className="h-3.5 w-3.5" />
-                          Remove
-                        </Button>
-                      ) : (
-                        <Button size="sm" onClick={() => onAdd(u.id)} disabled={addContact.isPending}>
-                          <UserPlus className="h-3.5 w-3.5" />
-                          Add
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        )}
-      </div>
+      </form>
 
       <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] text-sm font-medium">
+          Your contacts
+        </div>
         <DataState
           loading={isLoading}
           error={error}
           empty={contacts.length === 0}
-          emptyMessage="No contacts yet."
+          emptyMessage="No contacts yet. Add someone by their handle."
           onRetry={refetch}
           loadingRows={4}
         >
@@ -204,10 +109,15 @@ export function ContactsPage() {
                 <div className="flex items-center gap-3 px-4 py-3">
                   <Avatar name={c.user?.display_name} color={c.user?.color} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium truncate">{c.user?.display_name || 'Unknown user'}</div>
-                    <div className="text-xs text-[var(--color-muted-foreground)] truncate">{c.user?.handle || c.contact_user_id}</div>
+                    <div className="text-sm font-medium truncate">{c.user?.display_name || 'Unknown'}</div>
+                    <div className="text-xs text-[var(--color-muted-foreground)] truncate">{c.user?.handle}</div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => onRemove(c.id)} disabled={removeContact.isPending}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRemove(c.id)}
+                    disabled={removeContact.isPending}
+                  >
                     <UserMinus className="h-3.5 w-3.5" />
                     Remove
                   </Button>
@@ -218,52 +128,33 @@ export function ContactsPage() {
         </DataState>
       </div>
 
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent onClose={() => setInviteOpen(false)} className="text-center">
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-center">Add me as contact</DialogTitle>
-            <DialogDescription className="text-center">
-              Scan the QR code or open the link to add <strong>{me?.handle || 'this user'}</strong>.
+            <DialogTitle>Share your handle</DialogTitle>
+            <DialogDescription>
+              Send this to someone so they can add you as a contact.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="mx-auto mt-2 flex w-full max-w-[15rem] items-center justify-center rounded-2xl bg-white p-4">
-            {inviteUrl ? (
-              <QRCodeSVG
-                value={inviteUrl}
-                size={220}
-                bgColor="#ffffff"
-                fgColor="#0a0a0b"
-                level="M"
-                includeMargin={false}
-                style={{ display: 'block', width: '100%', height: 'auto', maxWidth: '220px' }}
-              />
-            ) : null}
-          </div>
-
-          <div className="relative mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-2">
-            <input
-              readOnly
-              value={inviteUrl}
-              className="h-8 w-full min-w-0 overflow-hidden whitespace-nowrap text-ellipsis bg-transparent pl-2 pr-0 text-sm outline-none"
-            />
-            <Button
-              size="icon-sm"
-              variant="secondary"
-              onClick={copyInvite}
-              className="absolute right-2 top-1/2 z-10 -translate-y-1/2"
-              aria-label="Copy contact invite link"
-            >
-              {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            </Button>
-          </div>
-
-          <div className="mt-3 flex justify-center">
-            <Button size="sm" variant="ghost" onClick={shareInvite}>
-              <Share2 className="h-4 w-4" />
-              Share
-            </Button>
-          </div>
+          {shareData && (
+            <div className="space-y-3 mt-2">
+              <div className="relative rounded-xl border border-[var(--color-border)] bg-[var(--color-background)] p-3">
+                <p className="text-sm pr-10 break-all">{shareData.share_text || shareData.handle}</p>
+                <Button
+                  size="icon-sm"
+                  variant="secondary"
+                  onClick={copyHandle}
+                  className="absolute right-2 top-2"
+                  aria-label="Copy"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-[var(--color-muted-foreground)]">
+                Your handle: <strong>{shareData.handle}</strong>
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

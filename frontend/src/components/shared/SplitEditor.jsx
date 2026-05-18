@@ -1,13 +1,28 @@
-import { useEffect, useMemo } from 'react'
-import { Avatar } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
+import { useMemo } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { formatMoney } from '@/lib/format'
-import { distributeEqualSplit, applyCustomShareEdit } from '@/lib/split'
+import { distributeEqualSplit } from '@/lib/split'
 
-// eslint-disable-next-line react-refresh/only-export-components
-export const distributeEqual = distributeEqualSplit
+function defaultSplitData(type, members, amountCents) {
+  const ids = members.map((m) => m.id)
+  const n = ids.length || 1
+  if (type === 'equal') return ids.map((id) => ({ user_id: id, value: 1 }))
+  if (type === 'custom') return distributeEqualSplit(amountCents, ids).map((s) => ({ user_id: s.user_id, value: s.share_cents }))
+  if (type === 'percentage') return ids.map((id) => ({ user_id: id, value: parseFloat((100 / n).toFixed(2)) }))
+  if (type === 'shares') return ids.map((id) => ({ user_id: id, value: 1 }))
+  return []
+}
+
+// Returns display cents for a member given the current split strategy
+function displayCents(type, entry, amountCents, totalShares) {
+  if (!entry) return 0
+  if (type === 'custom') return entry.value
+  if (type === 'percentage') return Math.round((entry.value / 100) * amountCents)
+  if (type === 'shares') return totalShares > 0 ? Math.round((entry.value / totalShares) * amountCents) : 0
+  return 0
+}
 
 export function SplitEditor({
   members,
@@ -15,161 +30,86 @@ export function SplitEditor({
   currency = 'EUR',
   splitType,
   onSplitTypeChange,
-  split,
-  onSplitChange,
+  splitData,
+  onSplitDataChange,
   payerId,
 }) {
   const memberIds = members.map((m) => m.id)
-  const memberIdsKey = memberIds.join(',')
-  const includedIds = split.map((s) => s.user_id)
-  const sum = split.reduce((a, s) => a + (s.share_cents || 0), 0)
-  const remainder = amountCents - sum
-  const canShowQuickActions = splitType === 'custom' && members.length >= 3
-  const payerShare = split.find((s) => s.user_id === payerId)?.share_cents ?? 0
-  const canAssignToPayer = Boolean(payerId) && memberIds.includes(payerId) && payerShare + remainder >= 0
 
-  const setIncluded = (id, included) => {
-    let next
-    if (included) {
-      const ids = [...includedIds, id]
-      next = distributeEqualSplit(amountCents, ids)
-    } else {
-      const ids = includedIds.filter((x) => x !== id)
-      next = distributeEqualSplit(amountCents, ids)
-    }
-    onSplitChange(next)
+  const handleTabChange = (type) => {
+    onSplitTypeChange(type)
+    onSplitDataChange(defaultSplitData(type, members, amountCents))
   }
 
-  const setCustomShare = (id, cents) => {
-    onSplitChange(applyCustomShareEdit({ split, userId: id, cents, amountCents }))
+  const getData = (id) => splitData.find((s) => s.user_id === id)
+  const setData = (id, value) => {
+    const next = splitData.some((s) => s.user_id === id)
+      ? splitData.map((s) => (s.user_id === id ? { ...s, value } : s))
+      : [...splitData, { user_id: id, value }]
+    onSplitDataChange(next)
   }
 
-  const withAllMembers = useMemo(
-    () =>
-      members.map((m) => ({
-        user_id: m.id,
-        share_cents: split.find((s) => s.user_id === m.id)?.share_cents ?? 0,
-      })),
-    [members, split],
-  )
-
-  const resetToEqual = () => {
-    onSplitChange(distributeEqualSplit(amountCents, memberIds))
+  // Equal tab helpers
+  const includedIds = splitData.map((s) => s.user_id)
+  const toggleIncluded = (id, included) => {
+    const next = included
+      ? [...includedIds, id].filter((x) => memberIds.includes(x))
+      : includedIds.filter((x) => x !== id)
+    onSplitDataChange(next.map((uid) => ({ user_id: uid, value: 1 })))
   }
-
-  const autoFixRemainder = () => {
-    if (remainder === 0) return
-    let left = remainder
-    const next = withAllMembers.map((s) => ({ ...s }))
-
-    if (left > 0) {
-      let i = 0
-      while (left > 0) {
-        const idx = i % next.length
-        next[idx].share_cents += 1
-        left -= 1
-        i += 1
-      }
-      onSplitChange(next)
-      return
-    }
-
-    left = Math.abs(left)
-    while (left > 0) {
-      let changed = false
-      for (let i = 0; i < next.length && left > 0; i += 1) {
-        if (next[i].share_cents > 0) {
-          next[i].share_cents -= 1
-          left -= 1
-          changed = true
-        }
-      }
-      if (!changed) break
-    }
-    onSplitChange(next)
-  }
-
-  const assignRemainderToPayer = () => {
-    if (!canAssignToPayer || remainder === 0) return
-    const next = withAllMembers.map((s) =>
-      s.user_id === payerId ? { ...s, share_cents: s.share_cents + remainder } : s,
-    )
-    onSplitChange(next)
-  }
-
-  // Recompute equal on amount change when in equal mode
-  const includedIdsKey = includedIds.join(',')
-  const recomputedEqual = useMemo(
+  const equalShares = useMemo(
     () => distributeEqualSplit(amountCents, includedIds),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [amountCents, includedIdsKey],
-  )
-  const twoPersonEqual = useMemo(
-    () => (members.length === 2 ? distributeEqualSplit(amountCents, memberIds) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [amountCents, members.length, memberIdsKey],
+    [amountCents, includedIds.join(',')],
   )
 
-  // In 2-person custom split, default to equal values if split is not initialized.
-  useEffect(() => {
-    if (splitType !== 'custom' || members.length !== 2) return
-    const hasBothMembers = split.length === 2 && memberIds.every((id) => split.some((s) => s.user_id === id))
-    if (!hasBothMembers) onSplitChange(twoPersonEqual)
-  }, [splitType, members.length, split, memberIds, twoPersonEqual, onSplitChange])
+  // Custom tab helpers
+  const customSum = useMemo(
+    () => splitData.reduce((a, s) => a + (splitType === 'custom' ? (s.value || 0) : 0), 0),
+    [splitData, splitType],
+  )
+  const customRemainder = amountCents - customSum
+
+  // Percentage tab helpers
+  const pctSum = useMemo(
+    () => splitData.reduce((a, s) => a + (splitType === 'percentage' ? (s.value || 0) : 0), 0),
+    [splitData, splitType],
+  )
+
+  // Shares tab helpers
+  const totalShares = useMemo(
+    () => splitData.reduce((a, s) => a + (splitType === 'shares' ? (s.value || 0) : 0), 0),
+    [splitData, splitType],
+  )
 
   return (
     <div className="space-y-3">
-      <Tabs
-        value={splitType}
-        onValueChange={(v) => {
-          onSplitTypeChange(v)
-          if (v === 'equal') onSplitChange(recomputedEqual)
-          if (v === 'custom' && members.length === 2) onSplitChange(twoPersonEqual)
-        }}
-      >
+      <Tabs value={splitType} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="equal">Equal</TabsTrigger>
           <TabsTrigger value="custom">Custom</TabsTrigger>
+          <TabsTrigger value="percentage">Percent</TabsTrigger>
+          <TabsTrigger value="shares">Shares</TabsTrigger>
         </TabsList>
 
+        {/* EQUAL */}
         <TabsContent value="equal">
           <div className="space-y-1.5">
             {members.map((m) => {
-              const mid = m.id
-              const included = includedIds.includes(mid)
-              const share = recomputedEqual.find((s) => s.user_id === mid)?.share_cents || 0
+              const included = includedIds.includes(m.id)
+              const share = equalShares.find((s) => s.user_id === m.id)?.share_cents || 0
               return (
                 <label
-                  key={mid}
+                  key={m.id}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2 cursor-pointer transition-colors',
-                    included
-                      ? 'bg-[var(--color-secondary)]'
-                      : 'opacity-60 hover:opacity-100 hover:bg-[var(--color-secondary)]/50',
+                    included ? 'bg-[var(--color-secondary)]' : 'opacity-60 hover:opacity-100 hover:bg-[var(--color-secondary)]/50',
                   )}
                 >
-                  <input
-                    type="checkbox"
-                    className="sr-only"
-                    checked={included}
-                    onChange={(e) => setIncluded(mid, e.target.checked)}
-                  />
-                  <div
-                    className={cn(
-                      'h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition',
-                      included
-                        ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
-                        : 'border-[var(--color-border)]',
-                    )}
-                  >
-                    {included && (
-                      <svg viewBox="0 0 24 24" fill="none" className="h-3 w-3 text-[var(--color-primary-foreground)]">
-                        <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
+                  <input type="checkbox" className="sr-only" checked={included} onChange={(e) => toggleIncluded(m.id, e.target.checked)} />
+                  <Checkbox checked={included} />
                   <Avatar name={m.display_name} color={m.color} size="sm" />
-                  <div className="flex-1 min-w-0 truncate">{m.display_name}</div>
+                  <div className="flex-1 min-w-0 truncate text-sm">{m.display_name}</div>
                   <div className="tabular-nums text-sm text-[var(--color-muted-foreground)]">
                     {included ? formatMoney(share, currency) : '—'}
                   </div>
@@ -179,27 +119,25 @@ export function SplitEditor({
           </div>
         </TabsContent>
 
+        {/* CUSTOM (cents per user) */}
         <TabsContent value="custom">
           <div className="space-y-1.5">
             {members.map((m) => {
-              const mid = m.id
-              const share = split.find((s) => s.user_id === mid)?.share_cents ?? 0
+              const entry = getData(m.id)
+              const cents = entry?.value ?? 0
               return (
-                <div
-                  key={mid}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2 bg-[var(--color-secondary)]"
-                >
+                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2 bg-[var(--color-secondary)]">
                   <Avatar name={m.display_name} color={m.color} size="sm" />
-                  <div className="flex-1 min-w-0 truncate">{m.display_name}</div>
+                  <div className="flex-1 min-w-0 truncate text-sm">{m.display_name}</div>
                   <div className="flex items-center gap-1">
                     <span className="text-xs text-[var(--color-muted-foreground)]">€</span>
                     <input
-                      inputMode="numeric"
-                      className="h-8 w-24 bg-[var(--color-background)] rounded-md border border-[var(--color-border)] px-2 text-right tabular-nums outline-none focus:border-[var(--color-primary)]"
-                      value={(share / 100).toFixed(2)}
+                      inputMode="decimal"
+                      className="h-8 w-24 bg-[var(--color-background)] rounded-md border border-[var(--color-border)] px-2 text-right tabular-nums text-sm outline-none focus:border-[var(--color-primary)]"
+                      value={(cents / 100).toFixed(2)}
                       onChange={(e) => {
-                        const d = e.target.value.replace(/\D/g, '')
-                        setCustomShare(mid, d === '' ? 0 : parseInt(d, 10))
+                        const raw = e.target.value.replace(/[^\d]/g, '')
+                        setData(m.id, raw === '' ? 0 : parseInt(raw, 10))
                       }}
                     />
                   </div>
@@ -207,15 +145,102 @@ export function SplitEditor({
               )
             })}
           </div>
+          <StatusBar
+            ok={customRemainder === 0}
+            over={customRemainder < 0}
+            label={
+              customRemainder === 0
+                ? 'Split is balanced'
+                : customRemainder > 0
+                ? `${formatMoney(customRemainder, currency)} left to assign`
+                : `${formatMoney(Math.abs(customRemainder), currency)} over budget`
+            }
+            actions={
+              customRemainder !== 0 && payerId && splitData.some((s) => s.user_id === payerId) ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const entry = getData(payerId)
+                    const cur = entry?.value ?? 0
+                    setData(payerId, Math.max(0, cur + customRemainder))
+                  }}
+                  className="text-xs underline text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+                >
+                  Assign to payer
+                </button>
+              ) : null
+            }
+          />
+        </TabsContent>
 
-          <RemainderBar
-            remainder={remainder}
-            currency={currency}
-            showQuickActions={canShowQuickActions}
-            canAssignToPayer={canAssignToPayer}
-            onAutoFixRemainder={autoFixRemainder}
-            onAssignRemainderToPayer={assignRemainderToPayer}
-            onResetToEqual={resetToEqual}
+        {/* PERCENTAGE */}
+        <TabsContent value="percentage">
+          <div className="space-y-1.5">
+            {members.map((m) => {
+              const entry = getData(m.id)
+              const pct = entry?.value ?? 0
+              const cents = Math.round((pct / 100) * amountCents)
+              return (
+                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2 bg-[var(--color-secondary)]">
+                  <Avatar name={m.display_name} color={m.color} size="sm" />
+                  <div className="flex-1 min-w-0 truncate text-sm">{m.display_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-muted-foreground)] tabular-nums">{formatMoney(cents, currency)}</span>
+                    <div className="flex items-center gap-0.5">
+                      <input
+                        inputMode="decimal"
+                        className="h-8 w-20 bg-[var(--color-background)] rounded-md border border-[var(--color-border)] px-2 text-right tabular-nums text-sm outline-none focus:border-[var(--color-primary)]"
+                        value={pct === 0 ? '' : pct}
+                        onChange={(e) => {
+                          const v = parseFloat(e.target.value)
+                          setData(m.id, isNaN(v) ? 0 : Math.max(0, Math.min(100, v)))
+                        }}
+                      />
+                      <span className="text-xs text-[var(--color-muted-foreground)]">%</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <StatusBar
+            ok={Math.abs(pctSum - 100) < 0.01}
+            over={pctSum > 100}
+            label={
+              Math.abs(pctSum - 100) < 0.01
+                ? 'Percentages add up to 100%'
+                : `Total: ${pctSum.toFixed(1)}% (need 100%)`
+            }
+          />
+        </TabsContent>
+
+        {/* SHARES */}
+        <TabsContent value="shares">
+          <div className="space-y-1.5">
+            {members.map((m) => {
+              const entry = getData(m.id)
+              const shares = entry?.value ?? 0
+              const cents = totalShares > 0 ? Math.round((shares / totalShares) * amountCents) : 0
+              return (
+                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2 bg-[var(--color-secondary)]">
+                  <Avatar name={m.display_name} color={m.color} size="sm" />
+                  <div className="flex-1 min-w-0 truncate text-sm">{m.display_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--color-muted-foreground)] tabular-nums">{formatMoney(cents, currency)}</span>
+                    <div className="flex items-center gap-1">
+                      <button type="button" onClick={() => setData(m.id, Math.max(0, shares - 1))} className="h-7 w-7 rounded-md border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-background)] text-sm leading-none">−</button>
+                      <span className="w-8 text-center tabular-nums text-sm font-medium">{shares}</span>
+                      <button type="button" onClick={() => setData(m.id, shares + 1)} className="h-7 w-7 rounded-md border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-background)] text-sm leading-none">+</button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <StatusBar
+            ok={totalShares > 0}
+            over={false}
+            label={totalShares > 0 ? `${totalShares} total shares` : 'Assign at least 1 share'}
           />
         </TabsContent>
       </Tabs>
@@ -223,64 +248,37 @@ export function SplitEditor({
   )
 }
 
-function RemainderBar({
-  remainder,
-  currency,
-  showQuickActions,
-  canAssignToPayer,
-  onAutoFixRemainder,
-  onAssignRemainderToPayer,
-  onResetToEqual,
-}) {
-  const exact = Math.abs(remainder) < 1
-  const guidance = exact
-    ? 'Split is balanced. You can submit now.'
-    : remainder > 0
-      ? 'Allocate the remaining amount, or use a quick action below.'
-      : 'Reduce shares to match the total, or use a quick action below.'
+function Checkbox({ checked }) {
   return (
-    <div className="mt-3 space-y-2">
-      <div
-        className={cn(
-          'rounded-lg px-3 py-2 text-sm flex items-center justify-between',
-          exact
-            ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]'
-            : remainder > 0
-              ? 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]'
-              : 'bg-[var(--color-destructive)]/10 text-[var(--color-destructive)]',
-        )}
-      >
-        <span>
-          {exact
-            ? '✓ Shares add up exactly'
-            : remainder > 0
-              ? `${formatMoney(remainder, currency)} left to assign`
-              : `${formatMoney(Math.abs(remainder), currency)} over budget`}
-        </span>
-      </div>
-      <p className="px-1 text-xs text-[var(--color-muted-foreground)]">
-        {showQuickActions || exact ? guidance : guidance.replace(', or use a quick action below.', '.')}
-      </p>
-
-      {showQuickActions && (
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={onAutoFixRemainder} disabled={exact}>
-            Auto-fix remainder
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={onAssignRemainderToPayer}
-            disabled={exact || !canAssignToPayer}
-          >
-            Assign remainder to payer
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={onResetToEqual}>
-            Reset to equal
-          </Button>
-        </div>
+    <div
+      className={cn(
+        'h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition',
+        checked ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-border)]',
+      )}
+    >
+      {checked && (
+        <svg viewBox="0 0 24 24" fill="none" className="h-3 w-3 text-[var(--color-primary-foreground)]">
+          <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       )}
     </div>
   )
 }
+
+function StatusBar({ ok, over, label, actions }) {
+  return (
+    <div className="mt-3 space-y-1">
+      <div
+        className={cn(
+          'rounded-lg px-3 py-2 text-sm',
+          ok ? 'bg-[var(--color-success)]/10 text-[var(--color-success)]' : over ? 'bg-[var(--color-destructive)]/10 text-[var(--color-destructive)]' : 'bg-[var(--color-warning)]/10 text-[var(--color-warning)]',
+        )}
+      >
+        {label}
+      </div>
+      {actions && <div className="px-1">{actions}</div>}
+    </div>
+  )
+}
+
+export { defaultSplitData }

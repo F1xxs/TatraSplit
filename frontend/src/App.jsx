@@ -3,18 +3,13 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const DashboardPage  = lazy(() => import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })))
+const ContactsPage   = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })))
 const GroupsListPage = lazy(() => import('@/pages/GroupsListPage').then((m) => ({ default: m.GroupsListPage })))
+const NewGroupPage   = lazy(() => import('@/pages/NewGroupPage').then((m) => ({ default: m.NewGroupPage })))
 const GroupDetailPage = lazy(() => import('@/pages/GroupDetailPage').then((m) => ({ default: m.GroupDetailPage })))
 const AddExpensePage  = lazy(() => import('@/pages/AddExpensePage').then((m) => ({ default: m.AddExpensePage })))
-const SettleUpPage   = lazy(() => import('@/pages/SettleUpPage').then((m) => ({ default: m.SettleUpPage })))
-const ActivityPage   = lazy(() => import('@/pages/ActivityPage').then((m) => ({ default: m.ActivityPage })))
-const NewGroupPage   = lazy(() => import('@/pages/NewGroupPage').then((m) => ({ default: m.NewGroupPage })))
-const JoinGroupPage  = lazy(() => import('@/pages/JoinGroupPage').then((m) => ({ default: m.JoinGroupPage })))
-const PaymentPage    = lazy(() => import('@/pages/PaymentPage').then((m) => ({ default: m.PaymentPage })))
+const AddReceiptPage  = lazy(() => import('@/pages/AddReceiptPage').then((m) => ({ default: m.AddReceiptPage })))
 const AdminPage      = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
-const ContactsPage   = lazy(() => import('@/pages/ContactsPage').then((m) => ({ default: m.ContactsPage })))
-const TransactionDetailPage = lazy(() => import('@/pages/TransactionDetailPage').then((m) => ({ default: m.TransactionDetailPage })))
 
 function PageFallback() {
   return (
@@ -32,19 +27,15 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index                               element={page(<DashboardPage />)} />
-        <Route path="groups"                       element={page(<GroupsListPage />)} />
-        <Route path="groups/new"                   element={page(<NewGroupPage />)} />
-        <Route path="groups/:id"                   element={page(<GroupDetailPage />)} />
-        <Route path="groups/:id/expenses/new"      element={page(<AddExpensePage />)} />
-        <Route path="groups/:id/settle"            element={page(<SettleUpPage />)} />
-        <Route path="activity"                     element={page(<ActivityPage />)} />
-        <Route path="activity/:id"                 element={page(<TransactionDetailPage />)} />
-        <Route path="payment"                      element={page(<PaymentPage />)} />
-        <Route path="contacts"                     element={page(<ContactsPage />)} />
-        <Route path="admin"                        element={page(<AdminPage />)} />
-        <Route path="join/:token"                  element={page(<JoinGroupPage />)} />
-        <Route path="*"                            element={<Navigate to="/" replace />} />
+        <Route index element={<Navigate to="/groups" replace />} />
+        <Route path="contacts"                         element={page(<ContactsPage />)} />
+        <Route path="groups"                           element={page(<GroupsListPage />)} />
+        <Route path="groups/new"                       element={page(<NewGroupPage />)} />
+        <Route path="groups/:id"                       element={page(<GroupDetailPage />)} />
+        <Route path="groups/:id/expenses/new"          element={page(<AddExpensePage />)} />
+        <Route path="groups/:id/expenses/new-receipt"  element={page(<AddReceiptPage />)} />
+        <Route path="admin"                            element={page(<AdminPage />)} />
+        <Route path="*"                                element={<Navigate to="/groups" replace />} />
       </Route>
     </Routes>
   )

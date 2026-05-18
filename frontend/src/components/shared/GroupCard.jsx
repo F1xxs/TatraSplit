@@ -1,28 +1,16 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { BalancePill } from './BalancePill'
 import { cn } from '@/lib/utils'
 
 export function GroupCard({ group, className }) {
-  const location = useLocation()
   const net = group.net_cents ?? 0
   const memberCount = (group.members || []).length
-  const isJar = !!group.jar_mode
-  const status = isJar
-    ? 'Moneybox '
-    : Math.abs(net) < 1
-      ? 'All settled'
-      : net > 0
-        ? 'You are owed'
-        : 'You owe'
+  const status = Math.abs(net) < 1 ? 'All settled' : net > 0 ? 'You are owed' : 'You owe'
 
   return (
     <Link
       to={`/groups/${group.id}`}
-      state={{
-        from: `${location.pathname}${location.search}`,
-        fromLabel: location.pathname === '/' ? 'Home' : 'Groups',
-      }}
       className={cn(
         'flex items-center gap-3 px-4 py-3.5 hover:bg-[var(--color-card-elevated)] transition-colors',
         className,
@@ -38,7 +26,7 @@ export function GroupCard({ group, className }) {
         </div>
       </div>
       <div className="shrink-0 flex items-center gap-2">
-        {!isJar && <BalancePill cents={net} currency={group.currency} />}
+        <BalancePill cents={net} currency={group.currency} />
         <ChevronRight className="h-4 w-4 text-[var(--color-muted-foreground)]" />
       </div>
     </Link>

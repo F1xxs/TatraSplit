@@ -6,20 +6,7 @@ import { normalizeGroup, normalizeList } from '@/lib/normalize'
 export function useGroups() {
   return useQuery({
     queryKey: qk.groups,
-    refetchInterval: 15_000,
-    refetchIntervalInBackground: false,
-    queryFn: async () => {
-      const groups = normalizeList((await api.get('/groups')).data).map(normalizeGroup)
-      if (!groups.some((g) => g?.net_cents == null)) return groups
-
-      const meBalances = (await api.get('/me/balances')).data
-      const netByGroup = new Map(
-        (meBalances?.by_group || []).map((row) => [row.group_id, row.net_cents ?? 0]),
-      )
-      return groups.map((g) =>
-        g?.net_cents == null ? { ...g, net_cents: netByGroup.get(g.id) ?? 0 } : g,
-      )
-    },
+    queryFn: async () => normalizeList((await api.get('/groups')).data).map(normalizeGroup),
   })
 }
 
@@ -63,28 +50,12 @@ export function useGroupSettlements(id) {
   })
 }
 
-export function useActivity() {
+export function useUsers(q) {
+  const query = q?.trim() || ''
   return useQuery({
-    queryKey: qk.activity,
-    queryFn: async () => normalizeList((await api.get('/activity')).data),
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
-  })
-}
-
-export function useUsers() {
-  return useQuery({
-    queryKey: qk.users(),
-    queryFn: async () => normalizeList((await api.get('/users')).data),
+    queryKey: qk.users(query),
+    queryFn: async () =>
+      normalizeList((await api.get('/users', query ? { params: { q: query } } : {})).data),
     staleTime: 5 * 60 * 1000,
-  })
-}
-
-export function useGroupInvites() {
-  return useQuery({
-    queryKey: qk.groupInvites,
-    queryFn: async () => normalizeList((await api.get('/groups/me/invites')).data),
-    refetchInterval: 10_000,
-    refetchIntervalInBackground: false,
   })
 }

@@ -2,8 +2,12 @@ import axios from 'axios'
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1'
 
-function getUserHandle() {
-  return localStorage.getItem('tatrasplit_user_handle') || '@misha'
+export function getUserHandle() {
+  return localStorage.getItem('hacksplit_user_handle') || ''
+}
+
+export function setUserHandle(handle) {
+  localStorage.setItem('hacksplit_user_handle', handle)
 }
 
 export const api = axios.create({
@@ -12,7 +16,8 @@ export const api = axios.create({
 })
 
 api.interceptors.request.use((config) => {
-  config.headers['X-User-Handle'] = getUserHandle()
+  const handle = getUserHandle()
+  if (handle) config.headers['X-User-Handle'] = handle
   return config
 })
 
