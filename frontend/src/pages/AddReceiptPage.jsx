@@ -1,92 +1,115 @@
-import { useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2, Loader2, ImageIcon } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
-import { useGroup } from '@/hooks/useGroups'
-import { useCreateReceipt, useScanReceipt } from '@/hooks/useMutations'
-import { useMe } from '@/hooks/useMe'
-import { useToast } from '@/components/ui/toaster'
-import { formatMoney } from '@/lib/format'
+import { MoneyInput } from "@/components/shared/MoneyInput";
+import { SplitEditor } from "@/components/shared/SplitEditor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toaster";
+import { useGroup } from "@/hooks/useGroups";
+import { useMe } from "@/hooks/useMe";
+import { useCreateReceipt, useScanReceipt } from "@/hooks/useMutations";
+import { formatMoney } from "@/lib/format";
+import { defaultSplitData } from "@/lib/split";
+import { ArrowLeft, ImageIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 function blankItem(members) {
   return {
-    name: '',
+    name: "",
     amount_cents: 0,
-    splitType: 'equal',
-    splitData: defaultSplitData('equal', members, 0),
-  }
+    splitType: "equal",
+    splitData: defaultSplitData("equal", members, 0),
+  };
 }
 
 export function AddReceiptPage() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { data: group } = useGroup(id)
-  const { data: me } = useMe()
-  const createReceipt = useCreateReceipt(id)
-  const scanReceipt = useScanReceipt(id)
-  const { toast } = useToast()
-  const fileRef = useRef(null)
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { data: group } = useGroup(id);
+  const { data: me } = useMe();
+  const createReceipt = useCreateReceipt(id);
+  const scanReceipt = useScanReceipt(id);
+  const { toast } = useToast();
+  const fileRef = useRef(null);
 
-  const members = group?.members || []
-  const currency = group?.currency || 'EUR'
+  const members = group?.members || [];
+  const currency = group?.currency || "EUR";
 
-  const [place, setPlace] = useState('')
-  const [location, setLocation] = useState('')
-  const [date, setDate] = useState('')
-  const [defaultPayer, setDefaultPayer] = useState(me?.id || '')
-  const [items, setItems] = useState([blankItem(members)])
+  const [place, setPlace] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
+  const [defaultPayer, setDefaultPayer] = useState(me?.id || "");
+  const [items, setItems] = useState([blankItem(members)]);
 
-  if (me?.id && !defaultPayer) setDefaultPayer(me.id)
+  if (me?.id && !defaultPayer) setDefaultPayer(me.id);
 
-  const totalCents = items.reduce((a, i) => a + (i.amount_cents || 0), 0)
+  const totalCents = items.reduce((a, i) => a + (i.amount_cents || 0), 0);
 
   const updateItem = (idx, patch) => {
-    setItems((prev) => prev.map((item, i) => {
-      if (i !== idx) return item
-      const next = { ...item, ...patch }
-      if (patch.splitType && patch.splitType !== item.splitType) {
-        next.splitData = defaultSplitData(patch.splitType, members, next.amount_cents)
-      }
-      if (patch.amount_cents !== undefined && patch.splitType === undefined) {
-        next.splitData = defaultSplitData(next.splitType, members, patch.amount_cents)
-      }
-      return next
-    }))
-  }
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== idx) return item;
+        const next = { ...item, ...patch };
+        if (patch.splitType && patch.splitType !== item.splitType) {
+          next.splitData = defaultSplitData(
+            patch.splitType,
+            members,
+            next.amount_cents,
+          );
+        }
+        if (patch.amount_cents !== undefined && patch.splitType === undefined) {
+          next.splitData = defaultSplitData(
+            next.splitType,
+            members,
+            patch.amount_cents,
+          );
+        }
+        return next;
+      }),
+    );
+  };
 
-  const addItem = () => setItems((prev) => [...prev, blankItem(members)])
-  const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx))
+  const addItem = () => setItems((prev) => [...prev, blankItem(members)]);
+  const removeItem = (idx) =>
+    setItems((prev) => prev.filter((_, i) => i !== idx));
 
   const handleScan = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    e.target.value = ''
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
     try {
-      const data = await scanReceipt.mutateAsync(file)
-      if (data?.place) setPlace(data.place)
+      const data = await scanReceipt.mutateAsync(file);
+      if (data?.place) setPlace(data.place);
       if (data?.items?.length) {
         setItems(
           data.items.map((item) => ({
-            name: item.name || '',
+            name: item.name || "",
             amount_cents: item.amount_cents || 0,
-            splitType: 'equal',
-            splitData: defaultSplitData('equal', members, item.amount_cents || 0),
+            splitType: "equal",
+            splitData: defaultSplitData(
+              "equal",
+              members,
+              item.amount_cents || 0,
+            ),
           })),
-        )
+        );
       }
-      toast({ variant: 'success', title: 'Receipt scanned' })
+      toast({ variant: "success", title: "Receipt scanned" });
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not scan receipt', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not scan receipt",
+        description: err.message,
+      });
     }
-  }
+  };
 
   const canSubmit =
     items.length > 0 &&
-    items.every((item) => item.name.trim() && item.amount_cents > 0 && item.splitData.length > 0)
+    items.every(
+      (item) =>
+        item.name.trim() && item.amount_cents > 0 && item.splitData.length > 0,
+    );
 
   const submit = async () => {
     try {
@@ -104,13 +127,17 @@ export function AddReceiptPage() {
           amount_cents: item.amount_cents,
           split: { type: item.splitType, members: item.splitData },
         })),
-      })
-      toast({ variant: 'success', title: 'Receipt saved' })
-      navigate(`/groups/${id}`)
+      });
+      toast({ variant: "success", title: "Receipt saved" });
+      navigate(`/groups/${id}`);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not save receipt', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not save receipt",
+        description: err.message,
+      });
     }
-  }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -125,7 +152,13 @@ export function AddReceiptPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Add receipt</h1>
-        <input ref={fileRef} type="file" accept="image/*" className="sr-only" onChange={handleScan} />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={handleScan}
+        />
         <Button
           size="sm"
           variant="outline"
@@ -133,9 +166,13 @@ export function AddReceiptPage() {
           disabled={scanReceipt.isPending}
         >
           {scanReceipt.isPending ? (
-            <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning…</>
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning…
+            </>
           ) : (
-            <><ImageIcon className="h-3.5 w-3.5" /> Scan receipt</>
+            <>
+              <ImageIcon className="h-3.5 w-3.5" /> Scan receipt
+            </>
           )}
         </Button>
       </div>
@@ -186,7 +223,8 @@ export function AddReceiptPage() {
             <option value="">None</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.display_name}{m.id === me?.id ? ' (you)' : ''}
+                {m.display_name}
+                {m.id === me?.id ? " (you)" : ""}
               </option>
             ))}
           </select>
@@ -225,7 +263,9 @@ export function AddReceiptPage() {
               </div>
 
               <div>
-                <Label className="text-xs text-[var(--color-muted-foreground)]">Amount</Label>
+                <Label className="text-xs text-[var(--color-muted-foreground)]">
+                  Amount
+                </Label>
                 <div className="mt-1 rounded-xl bg-[var(--color-secondary)] py-4">
                   <MoneyInput
                     value={item.amount_cents}
@@ -236,16 +276,22 @@ export function AddReceiptPage() {
               </div>
 
               <div>
-                <Label className="text-xs text-[var(--color-muted-foreground)]">Split</Label>
+                <Label className="text-xs text-[var(--color-muted-foreground)]">
+                  Split
+                </Label>
                 <div className="mt-1">
                   <SplitEditor
                     members={members}
                     amountCents={item.amount_cents}
                     currency={currency}
                     splitType={item.splitType}
-                    onSplitTypeChange={(type) => updateItem(idx, { splitType: type })}
+                    onSplitTypeChange={(type) =>
+                      updateItem(idx, { splitType: type })
+                    }
                     splitData={item.splitData}
-                    onSplitDataChange={(data) => updateItem(idx, { splitData: data })}
+                    onSplitDataChange={(data) =>
+                      updateItem(idx, { splitData: data })
+                    }
                   />
                 </div>
               </div>
@@ -259,12 +305,19 @@ export function AddReceiptPage() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || createReceipt.isPending}>
-            {createReceipt.isPending ? 'Saving…' : `Save receipt · ${formatMoney(totalCents, currency)}`}
+          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={!canSubmit || createReceipt.isPending}
+          >
+            {createReceipt.isPending
+              ? "Saving…"
+              : `Save receipt · ${formatMoney(totalCents, currency)}`}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom'
-import { Plus } from 'lucide-react'
-import { GroupCard } from '@/components/shared/GroupCard'
-import { DataState } from '@/components/shared/DataState'
-import { useGroups } from '@/hooks/useGroups'
+import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
+import { GroupCard } from "@/components/shared/GroupCard";
+import { DataState } from "@/components/shared/DataState";
+import { useGroups } from "@/hooks/useGroups";
 
 export function GroupsListPage() {
-  const { data: groups = [], isLoading, error, refetch } = useGroups()
+  const { data: groups = [], isLoading, error, refetch } = useGroups();
 
   return (
     <div className="space-y-6">
@@ -27,7 +27,7 @@ export function GroupsListPage() {
           empty={groups.length === 0}
           emptyContent={
             <div className="text-center py-12 text-sm text-[var(--color-muted-foreground)]">
-              No groups yet.{' '}
+              No groups yet.{" "}
               <Link to="/groups/new" className="text-[var(--color-primary)]">
                 Create one →
               </Link>
@@ -38,7 +38,10 @@ export function GroupsListPage() {
         >
           <div>
             {groups.map((g, i) => (
-              <div key={g.id} className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}>
+              <div
+                key={g.id}
+                className={i > 0 ? "border-t border-[var(--color-border)]" : ""}
+              >
                 <GroupCard group={g} />
               </div>
             ))}
@@ -46,5 +49,5 @@ export function GroupsListPage() {
         </DataState>
       </div>
     </div>
-  )
+  );
 }

@@ -1,5 +1,5 @@
-import { RefreshCw } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
+import { RefreshCw } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
  * Unified loading / error / empty state wrapper for list/detail pages.
@@ -18,7 +18,7 @@ export function DataState({
   loading,
   error,
   empty,
-  emptyMessage = 'Nothing here yet.',
+  emptyMessage = "Nothing here yet.",
   emptyContent,
   onRetry,
   loadingRows = 3,
@@ -31,14 +31,14 @@ export function DataState({
           <Skeleton key={i} className="h-14 w-full" />
         ))}
       </div>
-    )
+    );
   }
 
   if (error) {
     return (
       <div className="py-12 text-center space-y-3">
         <div className="text-sm text-[var(--color-muted-foreground)]">
-          {error.message || 'Failed to load.'}
+          {error.message || "Failed to load."}
         </div>
         {onRetry && (
           <button
@@ -50,17 +50,17 @@ export function DataState({
           </button>
         )}
       </div>
-    )
+    );
   }
 
   if (empty) {
-    if (emptyContent) return emptyContent
+    if (emptyContent) return emptyContent;
     return (
       <div className="py-12 text-center text-sm text-[var(--color-muted-foreground)]">
         {emptyMessage}
       </div>
-    )
+    );
   }
 
-  return children
+  return children;
 }

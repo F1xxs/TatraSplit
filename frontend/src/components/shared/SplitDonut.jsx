@@ -1,17 +1,23 @@
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
-import { formatMoney, getCategory } from '@/lib/format'
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
+import { formatMoney, getCategory } from "@/lib/format";
 
-export function SplitDonut({ splits = [], totalCents, category, description, currency = 'EUR' }) {
-  if (!splits.length) return null
+export function SplitDonut({
+  splits = [],
+  totalCents,
+  category,
+  description,
+  currency = "EUR",
+}) {
+  if (!splits.length) return null;
 
   const chartData = splits.map((s) => ({
     name: s.display_name || s.user_id,
     value: s.share_cents || 0,
-    color: s.color || '#0070D2',
-  }))
+    color: s.color || "#0070D2",
+  }));
 
-  const cat = getCategory(category)
-  const size = 220
+  const cat = getCategory(category);
+  const size = 220;
 
   return (
     <div className="flex flex-col items-center py-4">
@@ -48,11 +54,11 @@ export function SplitDonut({ splits = [], totalCents, category, description, cur
 
         {/* Avatar pins around ring */}
         {chartData.map((d, i) => {
-          const angle = (360 / chartData.length) * i - 90
-          const rad = (angle * Math.PI) / 180
-          const r = size * 0.44 + 6
-          const cx = size / 2 + r * Math.cos(rad)
-          const cy = size / 2 + r * Math.sin(rad)
+          const angle = (360 / chartData.length) * i - 90;
+          const rad = (angle * Math.PI) / 180;
+          const r = size * 0.44 + 6;
+          const cx = size / 2 + r * Math.cos(rad);
+          const cy = size / 2 + r * Math.sin(rad);
           return (
             <div
               key={i}
@@ -63,9 +69,9 @@ export function SplitDonut({ splits = [], totalCents, category, description, cur
                 top: cy - 16,
               }}
             >
-              {(d.name || '?')[0].toUpperCase()}
+              {(d.name || "?")[0].toUpperCase()}
             </div>
-          )
+          );
         })}
       </div>
 
@@ -78,11 +84,13 @@ export function SplitDonut({ splits = [], totalCents, category, description, cur
           >
             <div
               className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
-              style={{ background: s.color || '#0070D2' }}
+              style={{ background: s.color || "#0070D2" }}
             >
-              {(s.display_name || '?')[0].toUpperCase()}
+              {(s.display_name || "?")[0].toUpperCase()}
             </div>
-            <div className="flex-1 text-sm font-medium">{s.display_name || s.user_id}</div>
+            <div className="flex-1 text-sm font-medium">
+              {s.display_name || s.user_id}
+            </div>
             <div className="text-sm font-semibold tabular-nums">
               {formatMoney(s.share_cents || 0, currency)}
             </div>
@@ -90,5 +98,5 @@ export function SplitDonut({ splits = [], totalCents, category, description, cur
         ))}
       </div>
     </div>
-  )
+  );
 }

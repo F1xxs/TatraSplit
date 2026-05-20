@@ -1,118 +1,98 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
-import { CategoryPicker } from '@/components/shared/CategoryPicker'
-import { useGroup, useGroupExpenses } from '@/hooks/useGroups'
-import { usePatchExpense, useDeleteExpense } from '@/hooks/useMutations'
-import { useMe } from '@/hooks/useMe'
-import { useToast } from '@/components/ui/toaster'
-import { getCategory } from '@/lib/format'
+import { useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MoneyInput } from "@/components/shared/MoneyInput";
+import { SplitEditor } from "@/components/shared/SplitEditor";
+import { CategoryPicker } from "@/components/shared/CategoryPicker";
+import { useGroup, useGroupExpenses } from "@/hooks/useGroups";
+import { usePatchExpense, useDeleteExpense } from "@/hooks/useMutations";
+import { useMe } from "@/hooks/useMe";
+import { useToast } from "@/components/ui/toaster";
+import { getCategory } from "@/lib/format";
+import { defaultSplitData } from "@/lib/split";
 
 function isSplitValid(splitType, splitData, amountCents) {
-  if (!splitData.length) return false
-  if (splitType === 'equal') return splitData.some((s) => s.value > 0)
-  const sum = splitData.reduce((a, s) => a + (s.value || 0), 0)
-  if (splitType === 'custom') return Math.abs(sum - amountCents) < 1
-  if (splitType === 'percentage') return Math.abs(sum - 100) < 0.01
-  if (splitType === 'shares') return sum > 0
-  return false
+  if (!splitData.length) return false;
+  if (splitType === "equal") return splitData.some((s) => s.value > 0);
+  const sum = splitData.reduce((a, s) => a + (s.value || 0), 0);
+  if (splitType === "custom") return Math.abs(sum - amountCents) < 1;
+  if (splitType === "percentage") return Math.abs(sum - 100) < 0.01;
+  if (splitType === "shares") return sum > 0;
+  return false;
 }
 
-export function EditExpensePage() {
-  const { id, expId } = useParams()
-  const [searchParams] = useSearchParams()
-  const backTo = searchParams.get('backTo') || `/groups/${id}`
-  const navigate = useNavigate()
-  const { data: group } = useGroup(id)
-  const { data: expenses = [] } = useGroupExpenses(id)
-  const { data: me } = useMe()
-  const patchExpense = usePatchExpense(id)
-  const deleteExpense = useDeleteExpense(id)
-  const { toast } = useToast()
+function EditExpenseForm({ expense, members, currency, id, backTo, me }) {
+  const navigate = useNavigate();
+  const patchExpense = usePatchExpense(id);
+  const deleteExpense = useDeleteExpense(id);
+  const { toast } = useToast();
 
-  const expense = expenses.find((e) => e.id === expId)
-  const members = group?.members || []
-  const currency = group?.currency || 'EUR'
-
-  const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('food')
-  const [amount, setAmount] = useState(0)
-  const [paidBy, setPaidBy] = useState('')
-  const [splitType, setSplitType] = useState('equal')
-  const [splitData, setSplitData] = useState([])
-  const [initialized, setInitialized] = useState(false)
-
-  useEffect(() => {
-    if (!expense || initialized) return
-    setDescription(expense.description || '')
-    setCategory(expense.category || 'food')
-    setAmount(expense.amount_cents || 0)
-    setPaidBy(expense.paid_by || '')
-    const type = expense.split?.type || 'equal'
-    setSplitType(type)
-    setSplitData(expense.split?.members || defaultSplitData(type, members, expense.amount_cents || 0))
-    setInitialized(true)
-  }, [expense, members, initialized])
+  const type = expense.split?.type || "equal";
+  const [description, setDescription] = useState(expense.description || "");
+  const [category, setCategory] = useState(expense.category || "food");
+  const [amount, setAmount] = useState(expense.amount_cents || 0);
+  const [paidBy, setPaidBy] = useState(expense.paid_by || "");
+  const [splitType, setSplitType] = useState(type);
+  const [splitData, setSplitData] = useState(
+    expense.split?.members ||
+      defaultSplitData(type, members, expense.amount_cents || 0),
+  );
 
   const handleCategoryChange = (cat) => {
-    if (description === getCategory(category).label) setDescription(getCategory(cat).label)
-    setCategory(cat)
-  }
+    if (description === getCategory(category).label)
+      setDescription(getCategory(cat).label);
+    setCategory(cat);
+  };
 
-  const handleSplitTypeChange = (type) => {
-    setSplitType(type)
-    setSplitData(defaultSplitData(type, members, amount))
-  }
+  const handleSplitTypeChange = (t) => {
+    setSplitType(t);
+    setSplitData(defaultSplitData(t, members, amount));
+  };
 
   const canSubmit =
     !!description.trim() &&
     amount > 0 &&
     !!paidBy &&
     members.length > 0 &&
-    isSplitValid(splitType, splitData, amount)
+    isSplitValid(splitType, splitData, amount);
 
   const submit = async () => {
     try {
       await patchExpense.mutateAsync({
-        expenseId: expId,
+        expenseId: expense.id,
         description: description.trim(),
         category,
         amount_cents: amount,
         paid_by: paidBy,
         split: { type: splitType, members: splitData },
-      })
-      toast({ variant: 'success', title: 'Expense updated' })
-      navigate(backTo)
+      });
+      toast({ variant: "success", title: "Expense updated" });
+      navigate(backTo);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not update expense', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not update expense",
+        description: err.message,
+      });
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      await deleteExpense.mutateAsync(expId)
-      toast({ variant: 'success', title: 'Expense deleted' })
-      navigate(backTo)
+      await deleteExpense.mutateAsync(expense.id);
+      toast({ variant: "success", title: "Expense deleted" });
+      navigate(backTo);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not delete expense', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not delete expense",
+        description: err.message,
+      });
     }
-  }
-
-  if (!expense && expenses.length > 0) {
-    return (
-      <div className="space-y-4 max-w-2xl mx-auto">
-        <button type="button" onClick={() => navigate(backTo)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-        <p className="text-sm text-[var(--color-muted-foreground)]">Expense not found.</p>
-      </div>
-    )
-  }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -127,8 +107,13 @@ export function EditExpensePage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Edit expense</h1>
-        <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteExpense.isPending}>
-          {deleteExpense.isPending ? 'Deleting…' : 'Delete'}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleDelete}
+          disabled={deleteExpense.isPending}
+        >
+          {deleteExpense.isPending ? "Deleting…" : "Delete"}
         </Button>
       </div>
 
@@ -139,12 +124,14 @@ export function EditExpensePage() {
             <MoneyInput
               value={amount}
               onChange={(v) => {
-                setAmount(v)
-                setSplitData(defaultSplitData(splitType, members, v))
+                setAmount(v);
+                setSplitData(defaultSplitData(splitType, members, v));
               }}
               currency={currency}
             />
-            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{currency}</div>
+            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">
+              {currency}
+            </div>
           </div>
         </div>
 
@@ -177,7 +164,8 @@ export function EditExpensePage() {
             <option value="">Select member</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.display_name}{m.id === me?.id ? ' (you)' : ''}
+                {m.display_name}
+                {m.id === me?.id ? " (you)" : ""}
               </option>
             ))}
           </select>
@@ -200,12 +188,63 @@ export function EditExpensePage() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(backTo)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || patchExpense.isPending}>
-            {patchExpense.isPending ? 'Saving…' : 'Save changes'}
+          <Button variant="ghost" onClick={() => navigate(backTo)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={!canSubmit || patchExpense.isPending}
+          >
+            {patchExpense.isPending ? "Saving…" : "Save changes"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
+}
+
+export function EditExpensePage() {
+  const { id, expId } = useParams();
+  const [searchParams] = useSearchParams();
+  const backTo = searchParams.get("backTo") || `/groups/${id}`;
+  const navigate = useNavigate();
+  const { data: group } = useGroup(id);
+  const { data: expenses = [] } = useGroupExpenses(id);
+  const { data: me } = useMe();
+
+  const expense = expenses.find((e) => e.id === expId);
+  const members = group?.members || [];
+  const currency = group?.currency || "EUR";
+
+  if (!expense) {
+    if (expenses.length > 0) {
+      return (
+        <div className="space-y-4 max-w-2xl mx-auto">
+          <button
+            type="button"
+            onClick={() => navigate(backTo)}
+            className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            Expense not found.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <EditExpenseForm
+      key={expense.id}
+      expense={expense}
+      members={members}
+      currency={currency}
+      id={id}
+      backTo={backTo}
+      me={me}
+    />
+  );
 }

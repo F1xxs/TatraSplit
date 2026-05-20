@@ -1,52 +1,43 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, Plus, Receipt } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { useGroup, useGroupReceipts, useGroupExpenses } from '@/hooks/useGroups'
-import { usePatchReceipt, useDeleteReceipt } from '@/hooks/useMutations'
-import { useMe } from '@/hooks/useMe'
-import { useToast } from '@/components/ui/toaster'
-import { formatMoney } from '@/lib/format'
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  useGroup,
+  useGroupReceipts,
+  useGroupExpenses,
+} from "@/hooks/useGroups";
+import { usePatchReceipt, useDeleteReceipt } from "@/hooks/useMutations";
+import { useMe } from "@/hooks/useMe";
+import { useToast } from "@/components/ui/toaster";
+import { formatMoney } from "@/lib/format";
 
-export function EditReceiptPage() {
-  const { id, receiptId } = useParams()
-  const navigate = useNavigate()
-  const { data: group } = useGroup(id)
-  const { data: receipts = [] } = useGroupReceipts(id)
-  const { data: expenses = [] } = useGroupExpenses(id)
-  const { data: me } = useMe()
-  const patchReceipt = usePatchReceipt(id)
-  const deleteReceipt = useDeleteReceipt(id)
-  const { toast } = useToast()
+function EditReceiptForm({ receipt, members, currency, id, me, items }) {
+  const navigate = useNavigate();
+  const patchReceipt = usePatchReceipt(id);
+  const deleteReceipt = useDeleteReceipt(id);
+  const { toast } = useToast();
 
-  const receipt = receipts.find((r) => r.id === receiptId)
-  const members = group?.members || []
-  const currency = group?.currency || 'EUR'
-  const items = expenses.filter((e) => e.receipt_id === receiptId)
+  const [place, setPlace] = useState(receipt.place || "");
+  const [location, setLocation] = useState(receipt.location || "");
+  const [date, setDate] = useState(receipt.date || "");
+  const [defaultPayer, setDefaultPayer] = useState(
+    receipt.metadata?.default_payer || "",
+  );
 
-  const [place, setPlace] = useState('')
-  const [location, setLocation] = useState('')
-  const [date, setDate] = useState('')
-  const [defaultPayer, setDefaultPayer] = useState('')
-  const [initialized, setInitialized] = useState(false)
+  const totalCents = items.reduce((a, e) => a + (e.amount_cents || 0), 0);
 
-  useEffect(() => {
-    if (!receipt || initialized) return
-    setPlace(receipt.place || '')
-    setLocation(receipt.location || '')
-    setDate(receipt.date || '')
-    setDefaultPayer(receipt.metadata?.default_payer || '')
-    setInitialized(true)
-  }, [receipt, initialized])
-
-  const totalCents = items.reduce((a, e) => a + (e.amount_cents || 0), 0)
+  const backTo = `/groups/${id}/receipts/${receipt.id}/edit`;
+  const addItemUrl = `/groups/${id}/expenses/new?receipt_id=${receipt.id}&backTo=${encodeURIComponent(backTo)}`;
+  const editItemUrl = (expId) =>
+    `/groups/${id}/expenses/${expId}/edit?backTo=${encodeURIComponent(backTo)}`;
 
   const submit = async () => {
     try {
       await patchReceipt.mutateAsync({
-        receiptId,
+        receiptId: receipt.id,
         place: place.trim(),
         location: location.trim(),
         date: date || null,
@@ -55,39 +46,31 @@ export function EditReceiptPage() {
           default_payer: defaultPayer || null,
           total_cents: totalCents,
         },
-      })
-      toast({ variant: 'success', title: 'Receipt updated' })
-      navigate(`/groups/${id}`)
+      });
+      toast({ variant: "success", title: "Receipt updated" });
+      navigate(`/groups/${id}`);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not update receipt', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not update receipt",
+        description: err.message,
+      });
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      await deleteReceipt.mutateAsync(receiptId)
-      toast({ variant: 'success', title: 'Receipt deleted' })
-      navigate(`/groups/${id}`)
+      await deleteReceipt.mutateAsync(receipt.id);
+      toast({ variant: "success", title: "Receipt deleted" });
+      navigate(`/groups/${id}`);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not delete receipt', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not delete receipt",
+        description: err.message,
+      });
     }
-  }
-
-  const backTo = `/groups/${id}/receipts/${receiptId}/edit`
-  const addItemUrl = `/groups/${id}/expenses/new?receipt_id=${receiptId}&backTo=${encodeURIComponent(backTo)}`
-  const editItemUrl = (expId) =>
-    `/groups/${id}/expenses/${expId}/edit?backTo=${encodeURIComponent(backTo)}`
-
-  if (!receipt && receipts.length > 0) {
-    return (
-      <div className="space-y-4 max-w-2xl mx-auto">
-        <button type="button" onClick={() => navigate(`/groups/${id}`)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </button>
-        <p className="text-sm text-[var(--color-muted-foreground)]">Receipt not found.</p>
-      </div>
-    )
-  }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -102,8 +85,13 @@ export function EditReceiptPage() {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Edit receipt</h1>
-        <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleteReceipt.isPending}>
-          {deleteReceipt.isPending ? 'Deleting…' : 'Delete'}
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={handleDelete}
+          disabled={deleteReceipt.isPending}
+        >
+          {deleteReceipt.isPending ? "Deleting…" : "Delete"}
         </Button>
       </div>
 
@@ -153,16 +141,19 @@ export function EditReceiptPage() {
             <option value="">None</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.display_name}{m.id === me?.id ? ' (you)' : ''}
+                {m.display_name}
+                {m.id === me?.id ? " (you)" : ""}
               </option>
             ))}
           </select>
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>
+            Cancel
+          </Button>
           <Button onClick={submit} disabled={patchReceipt.isPending}>
-            {patchReceipt.isPending ? 'Saving…' : 'Save'}
+            {patchReceipt.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -176,11 +167,13 @@ export function EditReceiptPage() {
         </div>
 
         {items.length === 0 && (
-          <p className="text-sm text-[var(--color-muted-foreground)]">No items yet.</p>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            No items yet.
+          </p>
         )}
 
         {items.map((expense) => {
-          const payer = members.find((m) => m.id === expense.paid_by)
+          const payer = members.find((m) => m.id === expense.paid_by);
           return (
             <button
               key={expense.id}
@@ -190,24 +183,78 @@ export function EditReceiptPage() {
             >
               <Receipt className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{expense.description}</p>
+                <p className="text-sm font-medium truncate">
+                  {expense.description}
+                </p>
                 {payer && (
                   <p className="text-xs text-[var(--color-muted-foreground)]">
-                    paid by {payer.id === me?.id ? 'you' : payer.display_name}
+                    paid by {payer.id === me?.id ? "you" : payer.display_name}
                   </p>
                 )}
               </div>
-              <span className="text-sm font-medium shrink-0">{formatMoney(expense.amount_cents, currency)}</span>
+              <span className="text-sm font-medium shrink-0">
+                {formatMoney(expense.amount_cents, currency)}
+              </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" />
             </button>
-          )
+          );
         })}
 
-        <Button variant="outline" onClick={() => navigate(addItemUrl)} className="w-full">
+        <Button
+          variant="outline"
+          onClick={() => navigate(addItemUrl)}
+          className="w-full"
+        >
           <Plus className="h-4 w-4" />
           Add item
         </Button>
       </div>
     </div>
-  )
+  );
+}
+
+export function EditReceiptPage() {
+  const { id, receiptId } = useParams();
+  const navigate = useNavigate();
+  const { data: group } = useGroup(id);
+  const { data: receipts = [] } = useGroupReceipts(id);
+  const { data: expenses = [] } = useGroupExpenses(id);
+  const { data: me } = useMe();
+
+  const receipt = receipts.find((r) => r.id === receiptId);
+  const members = group?.members || [];
+  const currency = group?.currency || "EUR";
+  const items = expenses.filter((e) => e.receipt_id === receiptId);
+
+  if (!receipt) {
+    if (receipts.length > 0) {
+      return (
+        <div className="space-y-4 max-w-2xl mx-auto">
+          <button
+            type="button"
+            onClick={() => navigate(`/groups/${id}`)}
+            className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back
+          </button>
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            Receipt not found.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  }
+
+  return (
+    <EditReceiptForm
+      key={receipt.id}
+      receipt={receipt}
+      members={members}
+      currency={currency}
+      id={id}
+      me={me}
+      items={items}
+    />
+  );
 }

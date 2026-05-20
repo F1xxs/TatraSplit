@@ -1,29 +1,32 @@
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { getCategory, formatMoney } from '@/lib/format'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { getCategory, formatMoney } from "@/lib/format";
 
-export function CategoryDonut({ data = [], currency = 'EUR', size = 180 }) {
-  const total = data.reduce((sum, d) => sum + (d.spent_cents || 0), 0)
+export function CategoryDonut({ data = [], currency = "EUR", size = 180 }) {
+  const total = data.reduce((sum, d) => sum + (d.spent_cents || 0), 0);
   const chartData = data.map((d) => {
-    const c = getCategory(d.category)
+    const c = getCategory(d.category);
     return {
       name: c.label,
       emoji: c.emoji,
       value: d.spent_cents,
       color: c.color,
       category: d.category,
-    }
-  })
+    };
+  });
 
   if (!chartData.length) {
     return (
       <div className="flex flex-col items-center justify-center text-[var(--color-muted-foreground)] text-sm h-[180px]">
         No spending yet
       </div>
-    )
+    );
   }
 
   return (
-    <div className="relative flex items-center justify-center" style={{ height: size }}>
+    <div
+      className="relative flex items-center justify-center"
+      style={{ height: size }}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -42,11 +45,11 @@ export function CategoryDonut({ data = [], currency = 'EUR', size = 180 }) {
           <Tooltip
             cursor={false}
             contentStyle={{
-              background: 'var(--color-card-elevated)',
-              border: '1px solid var(--color-border)',
+              background: "var(--color-card-elevated)",
+              border: "1px solid var(--color-border)",
               borderRadius: 10,
               fontSize: 12,
-              color: 'var(--color-foreground)',
+              color: "var(--color-foreground)",
             }}
             formatter={(value, _name, p) => [
               formatMoney(value, currency),
@@ -64,15 +67,15 @@ export function CategoryDonut({ data = [], currency = 'EUR', size = 180 }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export function CategoryLegend({ data = [], currency = 'EUR' }) {
-  if (!data.length) return null
+export function CategoryLegend({ data = [], currency = "EUR" }) {
+  if (!data.length) return null;
   return (
     <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2">
       {data.map((d) => {
-        const c = getCategory(d.category)
+        const c = getCategory(d.category);
         return (
           <div key={d.category} className="flex items-center gap-2 text-sm">
             <span
@@ -86,8 +89,8 @@ export function CategoryLegend({ data = [], currency = 'EUR' }) {
               {formatMoney(d.spent_cents, currency)}
             </span>
           </div>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

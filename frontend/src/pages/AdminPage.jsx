@@ -1,60 +1,78 @@
-import { useState } from 'react'
-import { Database, RefreshCw, RotateCcw } from 'lucide-react'
-import { useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { api } from '@/lib/api'
-import { invalidateGlobal } from '@/lib/invalidation'
-import { useToast } from '@/components/ui/toaster'
+import { useState } from "react";
+import { Database, RefreshCw, RotateCcw } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { api } from "@/lib/api";
+import { invalidateGlobal } from "@/lib/invalidation";
+import { useToast } from "@/components/ui/toaster";
 
 export function AdminPage() {
-  const qc = useQueryClient()
-  const { toast } = useToast()
+  const qc = useQueryClient();
+  const { toast } = useToast();
 
-  const [status, setStatus] = useState(null)
-  const [loadingStatus, setLoadingStatus] = useState(false)
-  const [loadingReset, setLoadingReset] = useState(false)
-  const [loadingSeed, setLoadingSeed] = useState(false)
+  const [status, setStatus] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [loadingReset, setLoadingReset] = useState(false);
+  const [loadingSeed, setLoadingSeed] = useState(false);
 
   const loadStatus = async () => {
-    setLoadingStatus(true)
+    setLoadingStatus(true);
     try {
-      const res = await api.get('/admin/status')
-      setStatus(res.data?.collections || {})
+      const res = await api.get("/admin/status");
+      setStatus(res.data?.collections || {});
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not load status', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not load status",
+        description: err.message,
+      });
     } finally {
-      setLoadingStatus(false)
+      setLoadingStatus(false);
     }
-  }
+  };
 
   const doReset = async () => {
-    setLoadingReset(true)
+    setLoadingReset(true);
     try {
-      await api.post('/admin/reset')
-      invalidateGlobal(qc)
-      await loadStatus()
-      toast({ variant: 'success', title: 'Database reset complete' })
+      await api.post("/admin/reset");
+      invalidateGlobal(qc);
+      await loadStatus();
+      toast({ variant: "success", title: "Database reset complete" });
     } catch (err) {
-      toast({ variant: 'error', title: 'Reset failed', description: err.message })
+      toast({
+        variant: "error",
+        title: "Reset failed",
+        description: err.message,
+      });
     } finally {
-      setLoadingReset(false)
+      setLoadingReset(false);
     }
-  }
+  };
 
   const doSeed = async () => {
-    setLoadingSeed(true)
+    setLoadingSeed(true);
     try {
-      await api.post('/admin/seed')
-      invalidateGlobal(qc)
-      await loadStatus()
-      toast({ variant: 'success', title: 'Seed completed' })
+      await api.post("/admin/seed");
+      invalidateGlobal(qc);
+      await loadStatus();
+      toast({ variant: "success", title: "Seed completed" });
     } catch (err) {
-      toast({ variant: 'error', title: 'Seed failed', description: err.message })
+      toast({
+        variant: "error",
+        title: "Seed failed",
+        description: err.message,
+      });
     } finally {
-      setLoadingSeed(false)
+      setLoadingSeed(false);
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -64,7 +82,9 @@ export function AdminPage() {
         </div>
         <div>
           <h1 className="text-lg font-semibold">Admin: Database</h1>
-          <p className="text-xs text-[var(--color-muted-foreground)]">Reset, seed and inspect demo data state</p>
+          <p className="text-xs text-[var(--color-muted-foreground)]">
+            Reset, seed and inspect demo data state
+          </p>
         </div>
       </div>
 
@@ -76,15 +96,23 @@ export function AdminPage() {
         <CardContent className="flex flex-wrap gap-2">
           <Button onClick={doReset} disabled={loadingReset || loadingSeed}>
             <RotateCcw className="h-4 w-4" />
-            {loadingReset ? 'Resetting...' : 'Reset & Reseed'}
+            {loadingReset ? "Resetting..." : "Reset & Reseed"}
           </Button>
-          <Button variant="secondary" onClick={doSeed} disabled={loadingSeed || loadingReset}>
+          <Button
+            variant="secondary"
+            onClick={doSeed}
+            disabled={loadingSeed || loadingReset}
+          >
             <RefreshCw className="h-4 w-4" />
-            {loadingSeed ? 'Populating...' : 'Populate'}
+            {loadingSeed ? "Populating..." : "Populate"}
           </Button>
-          <Button variant="outline" onClick={loadStatus} disabled={loadingStatus}>
+          <Button
+            variant="outline"
+            onClick={loadStatus}
+            disabled={loadingStatus}
+          >
             <Database className="h-4 w-4" />
-            {loadingStatus ? 'Loading...' : 'Status'}
+            {loadingStatus ? "Loading..." : "Status"}
           </Button>
         </CardContent>
       </Card>
@@ -96,21 +124,30 @@ export function AdminPage() {
         </CardHeader>
         <CardContent>
           {!status ? (
-            <div className="text-sm text-[var(--color-muted-foreground)]">Click Status to load current counts.</div>
+            <div className="text-sm text-[var(--color-muted-foreground)]">
+              Click Status to load current counts.
+            </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
               <table className="w-full text-sm">
                 <thead className="bg-[var(--color-card-elevated)]">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium">Collection</th>
+                    <th className="px-3 py-2 text-left font-medium">
+                      Collection
+                    </th>
                     <th className="px-3 py-2 text-right font-medium">Count</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(status).map(([name, count]) => (
-                    <tr key={name} className="border-t border-[var(--color-border)]">
+                    <tr
+                      key={name}
+                      className="border-t border-[var(--color-border)]"
+                    >
                       <td className="px-3 py-2">{name}</td>
-                      <td className="px-3 py-2 text-right tabular-nums">{count}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">
+                        {count}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -120,5 +157,5 @@ export function AdminPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

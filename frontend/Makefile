@@ -19,6 +19,9 @@ run-prod: requirements
 	npm run build
 	npm run preview -- --host "$(FRONTEND_HOST)" --port "$(FRONTEND_PORT)"
 
+format:
+	npm run format
+
 clean:
 	@echo "Cleaning up..."
 	rm -rf node_modules

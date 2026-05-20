@@ -1,69 +1,73 @@
-import { useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
-import { CategoryPicker } from '@/components/shared/CategoryPicker'
-import { useGroup } from '@/hooks/useGroups'
-import { useAddExpense } from '@/hooks/useMutations'
-import { useMe } from '@/hooks/useMe'
-import { useToast } from '@/components/ui/toaster'
-import { getCategory } from '@/lib/format'
+import { CategoryPicker } from "@/components/shared/CategoryPicker";
+import { MoneyInput } from "@/components/shared/MoneyInput";
+import { SplitEditor } from "@/components/shared/SplitEditor";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/toaster";
+import { useGroup } from "@/hooks/useGroups";
+import { useMe } from "@/hooks/useMe";
+import { useAddExpense } from "@/hooks/useMutations";
+import { getCategory } from "@/lib/format";
+import { defaultSplitData } from "@/lib/split";
+import { ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 function isSplitValid(splitType, splitData, amountCents) {
-  if (!splitData.length) return false
-  if (splitType === 'equal') return splitData.some((s) => s.value > 0)
-  const sum = splitData.reduce((a, s) => a + (s.value || 0), 0)
-  if (splitType === 'custom') return Math.abs(sum - amountCents) < 1
-  if (splitType === 'percentage') return Math.abs(sum - 100) < 0.01
-  if (splitType === 'shares') return sum > 0
-  return false
+  if (!splitData.length) return false;
+  if (splitType === "equal") return splitData.some((s) => s.value > 0);
+  const sum = splitData.reduce((a, s) => a + (s.value || 0), 0);
+  if (splitType === "custom") return Math.abs(sum - amountCents) < 1;
+  if (splitType === "percentage") return Math.abs(sum - 100) < 0.01;
+  if (splitType === "shares") return sum > 0;
+  return false;
 }
 
 export function AddExpensePage() {
-  const { id } = useParams()
-  const [searchParams] = useSearchParams()
-  const receiptId = searchParams.get('receipt_id')
-  const backTo = searchParams.get('backTo') || `/groups/${id}`
-  const navigate = useNavigate()
-  const { data: group } = useGroup(id)
-  const { data: me } = useMe()
-  const addExpense = useAddExpense(id)
-  const { toast } = useToast()
+  const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const receiptId = searchParams.get("receipt_id");
+  const backTo = searchParams.get("backTo") || `/groups/${id}`;
+  const navigate = useNavigate();
+  const { data: group } = useGroup(id);
+  const { data: me } = useMe();
+  const addExpense = useAddExpense(id);
+  const { toast } = useToast();
 
-  const members = group?.members || []
-  const currency = group?.currency || 'EUR'
+  const members = group?.members || [];
+  const currency = group?.currency || "EUR";
 
-  const [description, setDescription] = useState(getCategory('food').label)
-  const [category, setCategory] = useState('food')
+  const [description, setDescription] = useState(getCategory("food").label);
+  const [category, setCategory] = useState("food");
 
   const handleCategoryChange = (cat) => {
-    if (description === getCategory(category).label) setDescription(getCategory(cat).label)
-    setCategory(cat)
-  }
-  const [amount, setAmount] = useState(0)
-  const [paidBy, setPaidBy] = useState(me?.id || '')
-  const [splitType, setSplitType] = useState('equal')
-  const [splitData, setSplitData] = useState(() => defaultSplitData('equal', members, 0))
+    if (description === getCategory(category).label)
+      setDescription(getCategory(cat).label);
+    setCategory(cat);
+  };
+  const [amount, setAmount] = useState(0);
+  const [paidBy, setPaidBy] = useState(me?.id || "");
+  const [splitType, setSplitType] = useState("equal");
+  const [splitData, setSplitData] = useState(() =>
+    defaultSplitData("equal", members, 0),
+  );
 
   // keep paid_by in sync when me loads
-  if (me?.id && !paidBy) setPaidBy(me.id)
+  if (me?.id && !paidBy) setPaidBy(me.id);
 
   // reinit splitData when members load or splitType changes externally
   const handleSplitTypeChange = (type) => {
-    setSplitType(type)
-    setSplitData(defaultSplitData(type, members, amount))
-  }
+    setSplitType(type);
+    setSplitData(defaultSplitData(type, members, amount));
+  };
 
   const canSubmit =
     !!description.trim() &&
     amount > 0 &&
     !!paidBy &&
     members.length > 0 &&
-    isSplitValid(splitType, splitData, amount)
+    isSplitValid(splitType, splitData, amount);
 
   const submit = async () => {
     try {
@@ -74,14 +78,18 @@ export function AddExpensePage() {
         paid_by: paidBy,
         split: { type: splitType, members: splitData },
         receipt_id: receiptId || null,
-        note: '',
-      })
-      toast({ variant: 'success', title: 'Expense added' })
-      navigate(backTo)
+        note: "",
+      });
+      toast({ variant: "success", title: "Expense added" });
+      navigate(backTo);
     } catch (err) {
-      toast({ variant: 'error', title: 'Could not add expense', description: err.message })
+      toast({
+        variant: "error",
+        title: "Could not add expense",
+        description: err.message,
+      });
     }
-  }
+  };
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -94,7 +102,9 @@ export function AddExpensePage() {
         Back
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight">{receiptId ? 'Add receipt item' : 'Add expense'}</h1>
+      <h1 className="text-xl font-semibold tracking-tight">
+        {receiptId ? "Add receipt item" : "Add expense"}
+      </h1>
 
       <div className="space-y-5">
         <div>
@@ -103,13 +113,15 @@ export function AddExpensePage() {
             <MoneyInput
               value={amount}
               onChange={(v) => {
-                setAmount(v)
-                setSplitData(defaultSplitData(splitType, members, v))
+                setAmount(v);
+                setSplitData(defaultSplitData(splitType, members, v));
               }}
               currency={currency}
               autoFocus
             />
-            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">{currency}</div>
+            <div className="mt-1 text-center text-xs text-[var(--color-muted-foreground)]">
+              {currency}
+            </div>
           </div>
         </div>
 
@@ -142,7 +154,8 @@ export function AddExpensePage() {
             <option value="">Select member</option>
             {members.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.display_name}{m.id === me?.id ? ' (you)' : ''}
+                {m.display_name}
+                {m.id === me?.id ? " (you)" : ""}
               </option>
             ))}
           </select>
@@ -165,12 +178,17 @@ export function AddExpensePage() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(backTo)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
-            {addExpense.isPending ? 'Saving…' : 'Add expense'}
+          <Button variant="ghost" onClick={() => navigate(backTo)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={!canSubmit || addExpense.isPending}
+          >
+            {addExpense.isPending ? "Saving…" : "Add expense"}
           </Button>
         </div>
       </div>
     </div>
-  )
+  );
 }

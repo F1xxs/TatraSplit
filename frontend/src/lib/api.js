@@ -1,25 +1,26 @@
-import axios from 'axios'
+import axios from "axios";
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000/api/v1'
+export const API_BASE =
+  import.meta.env.VITE_API_BASE || "http://localhost:8000/api/v1";
 
 export function getUserHandle() {
-  return localStorage.getItem('hacksplit_user_handle') || ''
+  return localStorage.getItem("hacksplit_user_handle") || "";
 }
 
 export function setUserHandle(handle) {
-  localStorage.setItem('hacksplit_user_handle', handle)
+  localStorage.setItem("hacksplit_user_handle", handle);
 }
 
 export const api = axios.create({
   baseURL: API_BASE,
   timeout: 10000,
-})
+});
 
 api.interceptors.request.use((config) => {
-  const handle = getUserHandle()
-  if (handle) config.headers['X-User-Handle'] = handle
-  return config
-})
+  const handle = getUserHandle();
+  if (handle) config.headers["X-User-Handle"] = handle;
+  return config;
+});
 
 api.interceptors.response.use(
   (res) => res,
@@ -28,7 +29,7 @@ api.interceptors.response.use(
       err?.response?.data?.detail ||
       err?.response?.data?.message ||
       err?.message ||
-      'Request failed'
-    return Promise.reject(new Error(msg))
+      "Request failed";
+    return Promise.reject(new Error(msg));
   },
-)
+);

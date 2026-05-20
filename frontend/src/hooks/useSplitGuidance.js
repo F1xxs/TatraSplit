@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { formatMoney } from '@/lib/format'
+import { useMemo } from "react";
+import { formatMoney } from "@/lib/format";
 
 /**
  * Computes split guidance message (exact / under / over) for custom-split forms.
@@ -10,24 +10,29 @@ import { formatMoney } from '@/lib/format'
  * @param {{ state: string, remainderCents: number }} splitBudgetStatus
  * @param {string} currency - e.g. 'EUR'
  */
-export function useSplitGuidance(splitType, amountCents, splitBudgetStatus, currency) {
+export function useSplitGuidance(
+  splitType,
+  amountCents,
+  splitBudgetStatus,
+  currency,
+) {
   return useMemo(() => {
-    if (splitType !== 'custom' || amountCents <= 0) return null
-    if (splitBudgetStatus.state === 'exact') {
+    if (splitType !== "custom" || amountCents <= 0) return null;
+    if (splitBudgetStatus.state === "exact") {
       return {
-        tone: 'text-[var(--color-success)] bg-[var(--color-success)]/10',
-        text: 'Split is exact. Ready to save.',
-      }
+        tone: "text-[var(--color-success)] bg-[var(--color-success)]/10",
+        text: "Split is exact. Ready to save.",
+      };
     }
-    if (splitBudgetStatus.state === 'under') {
+    if (splitBudgetStatus.state === "under") {
       return {
-        tone: 'text-[var(--color-warning)] bg-[var(--color-warning)]/10',
+        tone: "text-[var(--color-warning)] bg-[var(--color-warning)]/10",
         text: `${formatMoney(splitBudgetStatus.remainderCents, currency)} left to assign before saving.`,
-      }
+      };
     }
     return {
-      tone: 'text-[var(--color-destructive)] bg-[var(--color-destructive)]/10',
+      tone: "text-[var(--color-destructive)] bg-[var(--color-destructive)]/10",
       text: `${formatMoney(splitBudgetStatus.remainderCents, currency)} over budget. Reduce shares to continue.`,
-    }
-  }, [splitType, amountCents, splitBudgetStatus, currency])
+    };
+  }, [splitType, amountCents, splitBudgetStatus, currency]);
 }
