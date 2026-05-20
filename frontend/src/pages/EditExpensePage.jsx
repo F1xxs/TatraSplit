@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,8 @@ function isSplitValid(splitType, splitData, amountCents) {
 
 export function EditExpensePage() {
   const { id, expId } = useParams()
+  const [searchParams] = useSearchParams()
+  const backTo = searchParams.get('backTo') || `/groups/${id}`
   const navigate = useNavigate()
   const { data: group } = useGroup(id)
   const { data: expenses = [] } = useGroupExpenses(id)
@@ -85,7 +87,7 @@ export function EditExpensePage() {
         split: { type: splitType, members: splitData },
       })
       toast({ variant: 'success', title: 'Expense updated' })
-      navigate(`/groups/${id}`)
+      navigate(backTo)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not update expense', description: err.message })
     }
@@ -95,7 +97,7 @@ export function EditExpensePage() {
     try {
       await deleteExpense.mutateAsync(expId)
       toast({ variant: 'success', title: 'Expense deleted' })
-      navigate(`/groups/${id}`)
+      navigate(backTo)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not delete expense', description: err.message })
     }
@@ -104,7 +106,7 @@ export function EditExpensePage() {
   if (!expense && expenses.length > 0) {
     return (
       <div className="space-y-4 max-w-2xl mx-auto">
-        <button type="button" onClick={() => navigate(`/groups/${id}`)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
+        <button type="button" onClick={() => navigate(backTo)} className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
           <ArrowLeft className="h-4 w-4" /> Back
         </button>
         <p className="text-sm text-[var(--color-muted-foreground)]">Expense not found.</p>
@@ -116,7 +118,7 @@ export function EditExpensePage() {
     <div className="space-y-6 max-w-2xl mx-auto">
       <button
         type="button"
-        onClick={() => navigate(`/groups/${id}`)}
+        onClick={() => navigate(backTo)}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -198,7 +200,7 @@ export function EditExpensePage() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => navigate(backTo)}>Cancel</Button>
           <Button onClick={submit} disabled={!canSubmit || patchExpense.isPending}>
             {patchExpense.isPending ? 'Saving…' : 'Save changes'}
           </Button>

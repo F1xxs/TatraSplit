@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +25,9 @@ function isSplitValid(splitType, splitData, amountCents) {
 
 export function AddExpensePage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const receiptId = searchParams.get('receipt_id')
+  const backTo = searchParams.get('backTo') || `/groups/${id}`
   const navigate = useNavigate()
   const { data: group } = useGroup(id)
   const { data: me } = useMe()
@@ -70,10 +73,11 @@ export function AddExpensePage() {
         amount_cents: amount,
         paid_by: paidBy,
         split: { type: splitType, members: splitData },
+        receipt_id: receiptId || null,
         note: '',
       })
       toast({ variant: 'success', title: 'Expense added' })
-      navigate(`/groups/${id}`)
+      navigate(backTo)
     } catch (err) {
       toast({ variant: 'error', title: 'Could not add expense', description: err.message })
     }
@@ -83,14 +87,14 @@ export function AddExpensePage() {
     <div className="space-y-6 max-w-2xl mx-auto">
       <button
         type="button"
-        onClick={() => navigate(`/groups/${id}`)}
+        onClick={() => navigate(backTo)}
         className="inline-flex items-center gap-1 text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight">Add expense</h1>
+      <h1 className="text-xl font-semibold tracking-tight">{receiptId ? 'Add receipt item' : 'Add expense'}</h1>
 
       <div className="space-y-5">
         <div>
@@ -161,7 +165,7 @@ export function AddExpensePage() {
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => navigate(backTo)}>Cancel</Button>
           <Button onClick={submit} disabled={!canSubmit || addExpense.isPending}>
             {addExpense.isPending ? 'Saving…' : 'Add expense'}
           </Button>

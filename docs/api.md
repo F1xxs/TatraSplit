@@ -10,7 +10,7 @@ Default local base URL: `http://localhost:8000/api/v1`
 - All money fields are **integer cents** (`amount_cents`, `share_cents`, `net_cents`).
 - IDs are serialized as **strings** in responses.
 - Mutating endpoints also append to `activity`.
-- Demo identity is driven by header `X-User-Handle` (fallback `@misha`).
+- Demo identity is driven by header `X-User-Handle`
 - Frontend source of truth for that header is `localStorage` key `tatrasplit_user_handle` (read in `frontend/src/lib/api.js`).
 
 ## Endpoints

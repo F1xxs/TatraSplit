@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Plus, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MoneyInput } from '@/components/shared/MoneyInput'
-import { SplitEditor, defaultSplitData } from '@/components/shared/SplitEditor'
-import { useGroup, useGroupReceipts } from '@/hooks/useGroups'
+import { useGroup, useGroupReceipts, useGroupExpenses } from '@/hooks/useGroups'
 import { usePatchReceipt, useDeleteReceipt } from '@/hooks/useMutations'
 import { useMe } from '@/hooks/useMe'
 import { useToast } from '@/components/ui/toaster'
@@ -17,6 +15,7 @@ export function EditReceiptPage() {
   const navigate = useNavigate()
   const { data: group } = useGroup(id)
   const { data: receipts = [] } = useGroupReceipts(id)
+  const { data: expenses = [] } = useGroupExpenses(id)
   const { data: me } = useMe()
   const patchReceipt = usePatchReceipt(id)
   const deleteReceipt = useDeleteReceipt(id)
@@ -25,12 +24,12 @@ export function EditReceiptPage() {
   const receipt = receipts.find((r) => r.id === receiptId)
   const members = group?.members || []
   const currency = group?.currency || 'EUR'
+  const items = expenses.filter((e) => e.receipt_id === receiptId)
 
   const [place, setPlace] = useState('')
   const [location, setLocation] = useState('')
   const [date, setDate] = useState('')
   const [defaultPayer, setDefaultPayer] = useState('')
-  const [items, setItems] = useState([])
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
@@ -39,39 +38,10 @@ export function EditReceiptPage() {
     setLocation(receipt.location || '')
     setDate(receipt.date || '')
     setDefaultPayer(receipt.metadata?.default_payer || '')
-    setItems(
-      (receipt.items || []).map((item) => ({
-        name: item.name || '',
-        amount_cents: item.amount_cents || 0,
-        splitType: item.split?.type || 'equal',
-        splitData: item.split?.members || defaultSplitData('equal', members, item.amount_cents || 0),
-      })),
-    )
     setInitialized(true)
-  }, [receipt, members, initialized])
+  }, [receipt, initialized])
 
-  const totalCents = items.reduce((a, i) => a + (i.amount_cents || 0), 0)
-
-  const updateItem = (idx, patch) => {
-    setItems((prev) => prev.map((item, i) => {
-      if (i !== idx) return item
-      const next = { ...item, ...patch }
-      if (patch.splitType && patch.splitType !== item.splitType) {
-        next.splitData = defaultSplitData(patch.splitType, members, next.amount_cents)
-      }
-      if (patch.amount_cents !== undefined && patch.splitType === undefined) {
-        next.splitData = defaultSplitData(next.splitType, members, patch.amount_cents)
-      }
-      return next
-    }))
-  }
-
-  const addItem = () => setItems((prev) => [...prev, { name: '', amount_cents: 0, splitType: 'equal', splitData: defaultSplitData('equal', members, 0) }])
-  const removeItem = (idx) => setItems((prev) => prev.filter((_, i) => i !== idx))
-
-  const canSubmit =
-    items.length > 0 &&
-    items.every((item) => item.name.trim() && item.amount_cents > 0 && item.splitData.length > 0)
+  const totalCents = items.reduce((a, e) => a + (e.amount_cents || 0), 0)
 
   const submit = async () => {
     try {
@@ -85,11 +55,6 @@ export function EditReceiptPage() {
           default_payer: defaultPayer || null,
           total_cents: totalCents,
         },
-        items: items.map((item) => ({
-          name: item.name.trim(),
-          amount_cents: item.amount_cents,
-          split: { type: item.splitType, members: item.splitData },
-        })),
       })
       toast({ variant: 'success', title: 'Receipt updated' })
       navigate(`/groups/${id}`)
@@ -107,6 +72,11 @@ export function EditReceiptPage() {
       toast({ variant: 'error', title: 'Could not delete receipt', description: err.message })
     }
   }
+
+  const backTo = `/groups/${id}/receipts/${receiptId}/edit`
+  const addItemUrl = `/groups/${id}/expenses/new?receipt_id=${receiptId}&backTo=${encodeURIComponent(backTo)}`
+  const editItemUrl = (expId) =>
+    `/groups/${id}/expenses/${expId}/edit?backTo=${encodeURIComponent(backTo)}`
 
   if (!receipt && receipts.length > 0) {
     return (
@@ -189,78 +159,54 @@ export function EditReceiptPage() {
           </select>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label>Items</Label>
-            <span className="text-sm text-[var(--color-muted-foreground)]">
-              Total: <strong>{formatMoney(totalCents, currency)}</strong>
-            </span>
-          </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
+          <Button onClick={submit} disabled={patchReceipt.isPending}>
+            {patchReceipt.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
+      </div>
 
-          {items.map((item, idx) => (
-            <div
-              key={idx}
-              className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 space-y-4"
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium">Items</h2>
+          <span className="text-sm text-[var(--color-muted-foreground)]">
+            Total: <strong>{formatMoney(totalCents, currency)}</strong>
+          </span>
+        </div>
+
+        {items.length === 0 && (
+          <p className="text-sm text-[var(--color-muted-foreground)]">No items yet.</p>
+        )}
+
+        {items.map((expense) => {
+          const payer = members.find((m) => m.id === expense.paid_by)
+          return (
+            <button
+              key={expense.id}
+              type="button"
+              onClick={() => navigate(editItemUrl(expense.id))}
+              className="w-full flex items-center gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-left hover:bg-[var(--color-secondary)] transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <Input
-                  placeholder="Item name"
-                  value={item.name}
-                  onChange={(e) => updateItem(idx, { name: e.target.value })}
-                  className="flex-1"
-                />
-                {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(idx)}
-                    className="shrink-0 p-1.5 rounded-lg text-[var(--color-muted-foreground)] hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                    aria-label="Remove item"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+              <Receipt className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{expense.description}</p>
+                {payer && (
+                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                    paid by {payer.id === me?.id ? 'you' : payer.display_name}
+                  </p>
                 )}
               </div>
+              <span className="text-sm font-medium shrink-0">{formatMoney(expense.amount_cents, currency)}</span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-[var(--color-muted-foreground)]" />
+            </button>
+          )
+        })}
 
-              <div>
-                <Label className="text-xs text-[var(--color-muted-foreground)]">Amount</Label>
-                <div className="mt-1 rounded-xl bg-[var(--color-secondary)] py-4">
-                  <MoneyInput
-                    value={item.amount_cents}
-                    onChange={(v) => updateItem(idx, { amount_cents: v })}
-                    currency={currency}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label className="text-xs text-[var(--color-muted-foreground)]">Split</Label>
-                <div className="mt-1">
-                  <SplitEditor
-                    members={members}
-                    amountCents={item.amount_cents}
-                    currency={currency}
-                    splitType={item.splitType}
-                    onSplitTypeChange={(type) => updateItem(idx, { splitType: type })}
-                    splitData={item.splitData}
-                    onSplitDataChange={(data) => updateItem(idx, { splitData: data })}
-                  />
-                </div>
-              </div>
-            </div>
-          ))}
-
-          <Button variant="outline" onClick={addItem} className="w-full">
-            <Plus className="h-4 w-4" />
-            Add item
-          </Button>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>Cancel</Button>
-          <Button onClick={submit} disabled={!canSubmit || patchReceipt.isPending}>
-            {patchReceipt.isPending ? 'Saving…' : 'Save changes'}
-          </Button>
-        </div>
+        <Button variant="outline" onClick={() => navigate(addItemUrl)} className="w-full">
+          <Plus className="h-4 w-4" />
+          Add item
+        </Button>
       </div>
     </div>
   )
