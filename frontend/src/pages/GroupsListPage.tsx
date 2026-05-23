@@ -43,7 +43,9 @@ export const GroupsListPage: React.FC = () => {
               return (
                 <div
                   key={g.id}
-                  className={i > 0 ? "border-t border-[var(--color-border)]" : ""}
+                  className={
+                    i > 0 ? "border-t border-[var(--color-border)]" : ""
+                  }
                 >
                   <GroupCard group={g as any} />
                 </div>

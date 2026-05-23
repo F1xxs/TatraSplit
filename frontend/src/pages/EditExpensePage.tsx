@@ -88,7 +88,11 @@ const EditExpenseForm: React.FC<EditExpenseFormProps> = ({
   const [splitType, setSplitType] = useState(type);
   const [splitData, setSplitData] = useState<SplitData[]>(
     ((expense.split?.members as any) ||
-      (defaultSplitData(type, members, expense.amount_cents || 0) as any)) as SplitData[],
+      (defaultSplitData(
+        type,
+        members,
+        expense.amount_cents || 0,
+      ) as any)) as SplitData[],
   );
 
   const handleCategoryChange = (cat: string): void => {
@@ -99,7 +103,7 @@ const EditExpenseForm: React.FC<EditExpenseFormProps> = ({
 
   const handleSplitTypeChange = (t: string): void => {
     setSplitType(t);
-    setSplitData((defaultSplitData(t, members, amount) as any) as SplitData[]);
+    setSplitData(defaultSplitData(t, members, amount) as any as SplitData[]);
   };
 
   const canSubmit =
@@ -175,7 +179,9 @@ const EditExpenseForm: React.FC<EditExpenseFormProps> = ({
               value={amount}
               onChange={(v) => {
                 setAmount(v);
-                setSplitData((defaultSplitData(splitType, members, v) as any) as SplitData[]);
+                setSplitData(
+                  defaultSplitData(splitType, members, v) as any as SplitData[],
+                );
               }}
               currency={currency}
             />
@@ -231,7 +237,9 @@ const EditExpenseForm: React.FC<EditExpenseFormProps> = ({
               splitType={splitType}
               onSplitTypeChange={handleSplitTypeChange}
               splitData={splitData}
-              onSplitDataChange={(data: any) => setSplitData(data as SplitData[])}
+              onSplitDataChange={(data: any) =>
+                setSplitData(data as SplitData[])
+              }
               payerId={paidBy}
             />
           </div>

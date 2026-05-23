@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Plus, Receipt } from "lucide-react";
+import { CategoryPicker } from "@/components/shared/CategoryPicker";
+import { ReceiptBalanceSummary } from "@/components/group/ReceiptBalanceSummary";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +21,17 @@ interface Member {
   display_name: string;
 }
 
+interface SplitMember {
+  user_id: string;
+  value: number;
+}
+
 interface Expense {
   id: string;
   description: string;
   amount_cents: number;
   paid_by: string;
+  split?: { type: string; members: SplitMember[] };
 }
 
 interface Receipt {
@@ -33,6 +41,7 @@ interface Receipt {
   date: string;
   metadata?: {
     default_payer?: string;
+    default_category?: string;
   };
 }
 
@@ -72,6 +81,9 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
   const [defaultPayer, setDefaultPayer] = useState(
     receipt.metadata?.default_payer || "",
   );
+  const [category, setCategory] = useState(
+    receipt.metadata?.default_category || "other",
+  );
 
   const totalCents = items.reduce((a, e) => a + (e.amount_cents || 0), 0);
 
@@ -90,6 +102,7 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
         metadata: {
           members: members.map((m) => m.id),
           default_payer: defaultPayer || null,
+          default_category: category || null,
           total_cents: totalCents,
         },
       });
@@ -194,6 +207,13 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
           </select>
         </div>
 
+        <div>
+          <Label>Category</Label>
+          <div className="mt-2">
+            <CategoryPicker value={category} onChange={setCategory} />
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => navigate(`/groups/${id}`)}>
             Cancel
@@ -203,6 +223,15 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
           </Button>
         </div>
       </div>
+
+      {items.length > 0 && (
+        <ReceiptBalanceSummary
+          items={items as any}
+          members={members}
+          me={me}
+          currency={currency}
+        />
+      )}
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -220,6 +249,13 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
 
         {items.map((expense) => {
           const payer = members.find((m) => m.id === expense.paid_by);
+          const splitNames = expense.split?.members
+            .map((sm) => {
+              if (sm.user_id === me?.id) return "you";
+              return members.find((m) => m.id === sm.user_id)?.display_name;
+            })
+            .filter(Boolean)
+            .join(", ");
           return (
             <button
               key={expense.id}
@@ -235,6 +271,11 @@ const EditReceiptForm: React.FC<EditReceiptFormProps> = ({
                 {payer && (
                   <p className="text-xs text-[var(--color-muted-foreground)]">
                     paid by {payer.id === me?.id ? "you" : payer.display_name}
+                  </p>
+                )}
+                {splitNames && (
+                  <p className="text-xs text-[var(--color-muted-foreground)]">
+                    split: {splitNames}
                   </p>
                 )}
               </div>

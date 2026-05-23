@@ -66,8 +66,8 @@ export const AddExpensePage: React.FC = () => {
   const [amount, setAmount] = useState(0);
   const [paidBy, setPaidBy] = useState((me as any)?.id || "");
   const [splitType, setSplitType] = useState("equal");
-  const [splitData, setSplitData] = useState<SplitData[]>(() =>
-    (defaultSplitData("equal", members, 0) as any) as SplitData[],
+  const [splitData, setSplitData] = useState<SplitData[]>(
+    () => defaultSplitData("equal", members, 0) as any as SplitData[],
   );
 
   // keep paid_by in sync when me loads
@@ -76,10 +76,12 @@ export const AddExpensePage: React.FC = () => {
   // reinit splitData when members load or splitType changes externally
   const handleSplitTypeChange = (type: string): void => {
     setSplitType(type);
-    setSplitData((defaultSplitData(type, members, amount) as any) as SplitData[]);
+    setSplitData(defaultSplitData(type, members, amount) as any as SplitData[]);
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+  const handleImport = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
@@ -90,7 +92,13 @@ export const AddExpensePage: React.FC = () => {
       if (data.amount_cents) {
         const newSplitType = data.split?.type ?? splitType;
         setAmount(data.amount_cents);
-        setSplitData(defaultSplitData(newSplitType, members, data.amount_cents) as SplitData[]);
+        setSplitData(
+          defaultSplitData(
+            newSplitType,
+            members,
+            data.amount_cents,
+          ) as SplitData[],
+        );
       }
       if (data.paid_by) setPaidBy(data.paid_by);
       if (data.split) {
@@ -99,7 +107,11 @@ export const AddExpensePage: React.FC = () => {
       }
       toast({ variant: "success", title: "Expense imported" });
     } catch (err: any) {
-      toast({ variant: "error", title: "Could not import expense", description: err.message });
+      toast({
+        variant: "error",
+        title: "Could not import expense",
+        description: err.message,
+      });
     }
   };
 
@@ -177,7 +189,9 @@ export const AddExpensePage: React.FC = () => {
               value={amount}
               onChange={(v) => {
                 setAmount(v);
-                setSplitData((defaultSplitData(splitType, members, v) as any) as SplitData[]);
+                setSplitData(
+                  defaultSplitData(splitType, members, v) as any as SplitData[],
+                );
               }}
               currency={currency}
               autoFocus
@@ -234,7 +248,9 @@ export const AddExpensePage: React.FC = () => {
               splitType={splitType}
               onSplitTypeChange={handleSplitTypeChange}
               splitData={splitData}
-              onSplitDataChange={(data: any) => setSplitData(data as SplitData[])}
+              onSplitDataChange={(data: any) =>
+                setSplitData(data as SplitData[])
+              }
               payerId={paidBy}
             />
           </div>

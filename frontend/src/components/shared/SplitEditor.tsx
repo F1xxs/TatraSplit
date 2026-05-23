@@ -97,7 +97,9 @@ export const SplitEditor: React.FC<SplitEditorProps> = ({
 
   const handleTabChange = (type: string): void => {
     onSplitTypeChange(type);
-    onSplitDataChange((defaultSplitData(type, members, amountCents) as any) as SplitData[]);
+    onSplitDataChange(
+      defaultSplitData(type, members, amountCents) as any as SplitData[],
+    );
   };
 
   const getData = (id: string): SplitData | undefined =>

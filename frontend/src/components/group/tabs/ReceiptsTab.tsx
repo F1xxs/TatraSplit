@@ -8,6 +8,11 @@ interface Receipt {
   [key: string]: any;
 }
 
+interface Member {
+  id: string;
+  display_name: string;
+}
+
 interface ReceiptsTabProps {
   id: string;
   receipts: Receipt[];
@@ -15,6 +20,8 @@ interface ReceiptsTabProps {
   error?: Error | null;
   refetch: () => void;
   currency: string;
+  members?: Member[];
+  me?: { id: string };
 }
 
 export const ReceiptsTab: React.FC<ReceiptsTabProps> = ({
@@ -24,6 +31,8 @@ export const ReceiptsTab: React.FC<ReceiptsTabProps> = ({
   error,
   refetch,
   currency,
+  members = [],
+  me,
 }) => {
   const navigate = useNavigate();
 
@@ -44,6 +53,8 @@ export const ReceiptsTab: React.FC<ReceiptsTabProps> = ({
               key={r.id}
               receipt={r}
               currency={currency}
+              members={members}
+              me={me}
               onEdit={() => navigate(`/groups/${id}/receipts/${r.id}/edit`)}
             />
           ))}

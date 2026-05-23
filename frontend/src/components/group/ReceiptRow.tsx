@@ -1,38 +1,55 @@
-import { Receipt } from "lucide-react";
+import { CategoryIcon } from "@/components/shared/CategoryIcon";
 import { RecordRow } from "./RecordRow";
 
-interface Receipt {
-  id: string;
-  place?: string;
-  metadata?: {
-    total_cents?: number;
+interface Member {
+    id: string;
+    display_name: string;
+}
+
+interface ReceiptData {
+    id: string;
+    place?: string;
+    metadata?: {
+        total_cents?: number;
+        default_payer?: string;
+        default_category?: string;
+        [key: string]: any;
+    };
     [key: string]: any;
-  };
-  [key: string]: any;
 }
 
 interface ReceiptRowProps {
-  receipt: Receipt;
-  currency?: string;
-  onEdit: () => void;
+    receipt: ReceiptData;
+    currency?: string;
+    members?: Member[];
+    me?: { id: string };
+    onEdit: () => void;
 }
 
 export const ReceiptRow: React.FC<ReceiptRowProps> = ({
-  receipt,
-  currency = "EUR",
-  onEdit,
+    receipt,
+    currency = "EUR",
+    members = [],
+    me,
+    onEdit,
 }) => {
-  return (
-    <RecordRow
-      icon={
-        <div className="h-10 w-10 shrink-0 rounded-xl bg-[var(--color-secondary)] flex items-center justify-center">
-          <Receipt className="h-5 w-5 text-[var(--color-muted-foreground)]" />
-        </div>
-      }
-      name={receipt.place || "Receipt"}
-      amount={receipt.metadata?.total_cents ?? 0}
-      currency={currency}
-      onEdit={onEdit}
-    />
-  );
+    const defaultPayerId = receipt.metadata?.default_payer;
+    const payer = defaultPayerId
+        ? members.find((m) => m.id === defaultPayerId)
+        : null;
+    const payerLabel = payer
+        ? `${payer.id === me?.id ? "You" : payer.display_name} payed`
+        : undefined;
+    const category = receipt.metadata?.default_category || "other";
+
+    return (
+        <RecordRow
+            icon={<CategoryIcon category={category} />}
+            name={receipt.place || "Receipt"}
+            sub={payerLabel}
+            amount={receipt.metadata?.total_cents ?? 0}
+            currency={currency}
+            onEdit={onEdit}
+        />
+    );
 };

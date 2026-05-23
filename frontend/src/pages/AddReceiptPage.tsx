@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { CategoryPicker } from "@/components/shared/CategoryPicker";
 import { MoneyInput } from "@/components/shared/MoneyInput";
 import { SplitEditor } from "@/components/shared/SplitEditor";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,21 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
 import { useGroup } from "@/hooks/useGroups";
 import { useMe } from "@/hooks/useMe";
-import { useCreateReceipt, useImportReceipt, useScanReceipt } from "@/hooks/useMutations";
+import {
+  useCreateReceipt,
+  useImportReceipt,
+  useScanReceipt,
+} from "@/hooks/useMutations";
 import { formatMoney } from "@/lib/format";
 import { defaultSplitData } from "@/lib/split";
-import { ArrowLeft, ImageIcon, Loader2, Plus, Trash2, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
 interface ReceiptItem {
   name: string;
@@ -66,6 +78,7 @@ export const AddReceiptPage: React.FC = () => {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [defaultPayer, setDefaultPayer] = useState((me as any)?.id || "");
+  const [category, setCategory] = useState("other");
   const [items, setItems] = useState<ReceiptItem[]>([blankItem(members)]);
 
   if ((me as User)?.id && !defaultPayer) setDefaultPayer((me as User).id);
@@ -182,6 +195,7 @@ export const AddReceiptPage: React.FC = () => {
         metadata: {
           members: members.map((m: any) => m.id),
           default_payer: defaultPayer || null,
+          default_category: category || null,
           total_cents: totalCents,
         },
         items: items.map((item) => ({
@@ -308,6 +322,13 @@ export const AddReceiptPage: React.FC = () => {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <Label>Category</Label>
+          <div className="mt-2">
+            <CategoryPicker value={category} onChange={setCategory} />
+          </div>
         </div>
 
         <div className="space-y-4">

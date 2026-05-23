@@ -47,7 +47,7 @@ const TABS: TabConfig[] = [
 
 export const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  
+
   if (!id) {
     return <div className="text-center py-8">Group not found</div>;
   }
@@ -186,6 +186,8 @@ export const GroupDetailPage: React.FC = () => {
             error={recError}
             refetch={refetchRec}
             currency={currency}
+            members={members}
+            me={me}
           />
         </TabsContent>
 

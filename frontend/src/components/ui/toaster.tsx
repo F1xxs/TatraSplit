@@ -59,7 +59,7 @@ export const ToastProvider: React.FC<ToastProviderProps> = ({ children }) => {
   return (
     <ToastCtx.Provider value={{ toast, dismiss }}>
       {children}
-      <div className="pointer-events-none fixed inset-x-3 bottom-24 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:bottom-6 sm:w-full sm:max-w-sm">
+      <div className="pointer-events-none fixed inset-x-3 top-4 z-[1000] flex flex-col gap-2 sm:inset-x-auto sm:right-4 sm:top-4 sm:w-full sm:max-w-sm">
         {toasts.map((t) => (
           <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
         ))}
