@@ -22,6 +22,10 @@ run-prod: requirements
 format:
 	npm run format
 
+test:
+	npm run lint
+	npm run build
+
 clean:
 	@echo "Cleaning up..."
 	rm -rf node_modules

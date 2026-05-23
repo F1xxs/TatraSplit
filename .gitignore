@@ -30,7 +30,7 @@ package-lock.json
 
 # Editors & IDEs
 .idea/
-.vscode/*
+.vscode/
 !.vscode/extensions.json
 !.vscode/settings.json
 *.njsproj
@@ -103,6 +103,7 @@ docs/_build/
 
 
 # AI
+graphify-out/
 .playwright-mcp/
 .github/copilot-instructions.md
 .claude/
@@ -110,4 +111,4 @@ CLAUDE.md
 
 
 # Project specific
-
+/tests/

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { CategoryPicker } from "@/components/shared/CategoryPicker";
 import { MoneyInput } from "@/components/shared/MoneyInput";
@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
 import { useGroup } from "@/hooks/useGroups";
 import { useMe } from "@/hooks/useMe";
-import { useAddExpense } from "@/hooks/useMutations";
+import { useAddExpense, useImportExpense } from "@/hooks/useMutations";
 import { getCategory } from "@/lib/format";
 import { defaultSplitData } from "@/lib/split";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 
 interface SplitData {
   user_id: string;
@@ -48,6 +48,9 @@ export const AddExpensePage: React.FC = () => {
   const addExpense = useAddExpense(id);
   const { toast } = useToast();
 
+  const importExpense = useImportExpense(id);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   const members = (group as any)?.members || [];
   const currency = (group as any)?.currency || "EUR";
 
@@ -74,6 +77,30 @@ export const AddExpensePage: React.FC = () => {
   const handleSplitTypeChange = (type: string): void => {
     setSplitType(type);
     setSplitData((defaultSplitData(type, members, amount) as any) as SplitData[]);
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    try {
+      const data = await importExpense.mutateAsync(file);
+      if (data.description) setDescription(data.description);
+      if (data.category) setCategory(data.category);
+      if (data.amount_cents) {
+        const newSplitType = data.split?.type ?? splitType;
+        setAmount(data.amount_cents);
+        setSplitData(defaultSplitData(newSplitType, members, data.amount_cents) as SplitData[]);
+      }
+      if (data.paid_by) setPaidBy(data.paid_by);
+      if (data.split) {
+        setSplitType(data.split.type);
+        setSplitData(data.split.members as SplitData[]);
+      }
+      toast({ variant: "success", title: "Expense imported" });
+    } catch (err: any) {
+      toast({ variant: "error", title: "Could not import expense", description: err.message });
+    }
   };
 
   const canSubmit =
@@ -116,9 +143,31 @@ export const AddExpensePage: React.FC = () => {
         Back
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight">
-        {receiptId ? "Add receipt item" : "Add expense"}
-      </h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold tracking-tight">
+          {receiptId ? "Add receipt item" : "Add expense"}
+        </h1>
+        {!receiptId && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json,.yaml,.yml"
+              className="sr-only"
+              onChange={handleImport}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => fileRef.current?.click()}
+              disabled={importExpense.isPending}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {importExpense.isPending ? "Importing…" : "Import"}
+            </Button>
+          </>
+        )}
+      </div>
 
       <div className="space-y-5">
         <div>

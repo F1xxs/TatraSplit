@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
 import { useGroup } from "@/hooks/useGroups";
 import { useMe } from "@/hooks/useMe";
-import { useCreateReceipt, useScanReceipt } from "@/hooks/useMutations";
+import { useCreateReceipt, useImportReceipt, useScanReceipt } from "@/hooks/useMutations";
 import { formatMoney } from "@/lib/format";
 import { defaultSplitData } from "@/lib/split";
-import { ArrowLeft, ImageIcon, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ImageIcon, Loader2, Plus, Trash2, Upload } from "lucide-react";
 
 interface ReceiptItem {
   name: string;
@@ -54,8 +54,10 @@ export const AddReceiptPage: React.FC = () => {
   const { data: me } = useMe();
   const createReceipt = useCreateReceipt(id);
   const scanReceipt = useScanReceipt(id);
+  const importReceipt = useImportReceipt(id);
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const importRef = useRef<HTMLInputElement>(null);
 
   const members = (group as any)?.members || [];
   const currency = (group as any)?.currency || "EUR";
@@ -131,6 +133,39 @@ export const AddReceiptPage: React.FC = () => {
     }
   };
 
+  const handleImport = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ): Promise<void> => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    try {
+      const data = await importReceipt.mutateAsync(file);
+      if (data.place) setPlace(data.place);
+      if (data.location) setLocation(data.location);
+      if (data.date) setDate(data.date);
+      if (data.items?.length) {
+        setItems(
+          data.items.map((item: any) => ({
+            name: item.description || "",
+            amount_cents: item.amount_cents || 0,
+            splitType: item.split?.type || "equal",
+            splitData: item.split?.members?.length
+              ? item.split.members
+              : defaultSplitData("equal", members, item.amount_cents || 0),
+          })),
+        );
+      }
+      toast({ variant: "success", title: "Receipt imported" });
+    } catch (err: any) {
+      toast({
+        variant: "error",
+        title: "Could not import receipt",
+        description: err.message,
+      });
+    }
+  };
+
   const canSubmit =
     items.length > 0 &&
     items.every(
@@ -179,29 +214,47 @@ export const AddReceiptPage: React.FC = () => {
 
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold tracking-tight">Add receipt</h1>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={handleScan}
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => fileRef.current?.click()}
-          disabled={scanReceipt.isPending}
-        >
-          {scanReceipt.isPending ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning…
-            </>
-          ) : (
-            <>
-              <ImageIcon className="h-3.5 w-3.5" /> Scan receipt
-            </>
-          )}
-        </Button>
+        <div className="flex gap-2">
+          <input
+            ref={importRef}
+            type="file"
+            accept=".json"
+            className="sr-only"
+            onChange={handleImport}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => importRef.current?.click()}
+            disabled={importReceipt.isPending}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {importReceipt.isPending ? "Importing…" : "Import"}
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={handleScan}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => fileRef.current?.click()}
+            disabled={scanReceipt.isPending}
+          >
+            {scanReceipt.isPending ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Scanning…
+              </>
+            ) : (
+              <>
+                <ImageIcon className="h-3.5 w-3.5" /> Scan receipt
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-5">

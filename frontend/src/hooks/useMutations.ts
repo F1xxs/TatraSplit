@@ -127,6 +127,16 @@ export function useScanReceipt(groupId: string) {
   });
 }
 
+export function useImportExpense(groupId: string) {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return (await api.post(`/groups/${groupId}/import/expense`, form)).data;
+    },
+  });
+}
+
 export function useCreateTransfer(groupId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -160,6 +170,16 @@ export function useDeleteTransfer(groupId: string) {
     onSuccess: () => {
       invalidateGroup(qc, groupId);
       invalidateGlobal(qc);
+    },
+  });
+}
+
+export function useImportReceipt(groupId: string) {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return (await api.post(`/groups/${groupId}/import/receipt`, form)).data;
     },
   });
 }
